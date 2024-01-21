@@ -1615,7 +1615,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 		startaddr += writelen;
 		towrite -= writelen;
 
-
+                usleep(100);
 		if (towrite > 0) {
 			writebuf = request->received;
 			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
