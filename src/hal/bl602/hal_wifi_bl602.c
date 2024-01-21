@@ -26,6 +26,7 @@ static void (*g_wifiStatusCallback)(int code);
 void HAL_ConnectToWiFi(const char *ssid, const char *psk, obkStaticIP_t *ip)
 {
     wifi_interface_t wifi_interface;
+
     wifi_interface = wifi_mgmr_sta_enable();
     wifi_mgmr_sta_connect(wifi_interface, ssid, psk, NULL, NULL, 0, 0);
 
