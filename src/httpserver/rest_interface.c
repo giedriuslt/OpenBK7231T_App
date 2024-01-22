@@ -1606,6 +1606,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 			//add_otadata((unsigned char*)writebuf, writelen);
 
 			printf("Flash takes %i. ", useLen);
+			ADDLOG_DEBUG(LOG_FEATURE_OTA, "WS%i", writelen);
 			utils_sha256_update(&ctx, (byte*)useBuf, useLen);
 			bl_mtd_write(handle, flash_offset, useLen, (byte*)useBuf);
 			flash_offset += useLen;
@@ -1616,10 +1617,11 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 		towrite -= writelen;
 
                 rtos_delay_milliseconds(10);
-		ADDLOG_DEBUG(LOG_FEATURE_OTA, "Writelen %i at %i", writelen, total);
+		ADDLOG_DEBUG(LOG_FEATURE_OTA, "WC%i/%i", writelen, total);
 		if (towrite > 0) {
 			writebuf = request->received;
 			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
+			ADDLOG_DEBUG(LOG_FEATURE_OTA, "RC%i/%i", writelen, total);
 			if (writelen < 0) {
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
 			}
