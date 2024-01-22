@@ -1499,7 +1499,9 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	if (ret) {
 		return http_rest_error(request, -20, "Open Default FW partition failed");
 	}
-
+	if (request->contentLength >= 0) {
+		towrite = request->contentLength;
+	}
 	recv_buffer = pvPortMalloc(OTA_PROGRAM_SIZE);
 
 	unsigned int buffer_offset, flash_offset, ota_addr;
@@ -1538,9 +1540,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	rtos_delay_milliseconds(2000);
 	ADDLOG_DEBUG(LOG_FEATURE_OTA, "Waited 2s" );
 
-	if (request->contentLength >= 0) {
-		towrite = request->contentLength;
-	}
+
 
 	// get header
 	// recv_buffer	
