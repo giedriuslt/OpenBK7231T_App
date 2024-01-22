@@ -1623,6 +1623,16 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 		if (towrite > 0) {
 			writebuf = request->received;
 			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
+			if (writelen>0 && writelen <256)
+			{
+				ret = recv(request->fd, writebuf+writelen, request->receivedLenmax-writelen, 0);
+				if (ret>0)
+				{
+					writelen+=ret;
+				}
+			}
+
+			
 			ADDLOG_DEBUG(LOG_FEATURE_OTA, "RC%i/%i", writelen, total);
 			if (writelen < 0) {
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
