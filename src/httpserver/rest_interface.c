@@ -1535,6 +1535,8 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	hal_update_mfg_ptable();
 	bl_mtd_erase_all(handle);
 	printf("Done\r\n");
+	rtos_delay_milliseconds(2000);
+	ADDLOG_DEBUG(LOG_FEATURE_OTA, "Waited 2s" );
 
 	if (request->contentLength >= 0) {
 		towrite = request->contentLength;
