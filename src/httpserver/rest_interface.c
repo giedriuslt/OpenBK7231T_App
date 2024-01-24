@@ -1537,9 +1537,6 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	hal_update_mfg_ptable();
 	bl_mtd_erase_all(handle);
 	printf("Done\r\n");
-	rtos_delay_milliseconds(2000);
-	ADDLOG_DEBUG(LOG_FEATURE_OTA, "Waited 2s" );
-
 
 
 	// get header
@@ -1622,10 +1619,10 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 		ADDLOG_DEBUG(LOG_FEATURE_OTA, "WC%i/%i", writelen, total);
 		if (towrite > 0) {
 			writebuf = request->received;
-			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
-			if (writelen>0 && writelen <256)
+			writelen = recv(request->fd, writebuf, 512, 0);
+			if (writelen>0 && writelen <512)
 			{
-				ret = recv(request->fd, writebuf+writelen, request->receivedLenmax-writelen, 0);
+				ret = recv(request->fd, writebuf+writelen, 512-writelen, 0);
 				if (ret>0)
 				{
 					writelen+=ret;
