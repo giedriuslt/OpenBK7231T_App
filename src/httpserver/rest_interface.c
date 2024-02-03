@@ -1824,7 +1824,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	// bl_mtd_erase_all(handle);
 	uint32_t erase_offset = 0;
 	uint32_t erase_len = 0;
-	while (erase_offset < bin_size);
+	while (erase_offset < bin_size)
 	{
 		erase_len = bin_size - flash_offset;
 		if (erase_len > 0x10000)
