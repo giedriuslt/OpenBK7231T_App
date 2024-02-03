@@ -1551,24 +1551,6 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
 	hal_update_mfg_ptable();
-	// bl_mtd_erase_all(handle);
-	uint32_t erase_offset = 0;
-	uint32_t erase_len = 0;
-	while (erase_offset < bin_size);
-	{
-		erase_len = bin_size - flash_offset;
-		if (erase_len > 0x10000)
-		{
-			erase_len = 0x10000; //erase in 64kb chunks
-		}
-		printf("erase  %lu / %lu \r\n", erase_offset, erase_len);
-		rtos_delay_milliseconds(100);
-		// bl_mtd_erase(handle, erase_offset, erase_len);
-		printf("eraseD  %lu / %lu \r\n", erase_offset, erase_len);
-		erase_offset += erase_len;
-		rtos_delay_milliseconds(10);
-	}	
-	return http_rest_error(request, -20, "No header found");
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
