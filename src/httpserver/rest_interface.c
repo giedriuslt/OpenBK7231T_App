@@ -90,6 +90,7 @@ static int http_rest_post_lfs_file(http_request_t* request);
 
 static int http_rest_post_reboot(http_request_t* request);
 static int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr);
+static int http_rest_post_dry(http_request_t* request, int startaddr, int maxaddr);
 static int http_rest_get_flash(http_request_t* request, int startaddr, int len);
 static int http_rest_get_flash_advanced(http_request_t* request);
 static int http_rest_post_flash_advanced(http_request_t* request);
