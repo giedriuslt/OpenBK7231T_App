@@ -1824,7 +1824,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	// bl_mtd_erase_all(handle);
 	uint32_t erase_offset = 0;
 	uint32_t erase_len = 0;
-	while (erase_offset < bin_size);
+	//while (erase_offset < bin_size);
 	{
 		erase_len = bin_size - flash_offset;
 		if (erase_len > 0x10000)
@@ -1838,7 +1838,10 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 		erase_offset += erase_len;
 		rtos_delay_milliseconds(10);
 	}	
-	return http_rest_error(request, -20, "No header found");
+	http_setup(request, httpMimeTypeJson);
+	hprintf255(request, "{\"fail\":%d}", 3);
+	poststr(request, NULL);
+	return 0;
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
