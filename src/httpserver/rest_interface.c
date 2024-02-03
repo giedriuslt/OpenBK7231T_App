@@ -1550,8 +1550,8 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	printf("[OTA] [TEST] activeIndex is %u, use OTA address=%08x\r\n", ptEntry.activeIndex, (unsigned int)ota_addr);
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
-	bl_mtd_erase_all(handle);
 	hal_update_mfg_ptable();
+	bl_mtd_erase_all(handle);
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
