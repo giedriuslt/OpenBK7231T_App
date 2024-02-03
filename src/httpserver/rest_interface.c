@@ -1554,14 +1554,16 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	// bl_mtd_erase_all(handle);
 	flash_offset = 0;
 	uint32_t erase_len = 0;
-	while (flash_offset < part_size);
+	while (flash_offset < bin_size);
 	{
-		erase_len = part_size - flash_offset;
+		erase_len = bin_size - flash_offset;
 		if (erase_len > 0x10000)
 		{
 			erase_len = 0x10000; //erase in 64kb chunks
 		}
+		printf("erase  %i / %i \r\n", flash_offset, erase_len);
 		bl_mtd_erase(handle, flash_offset, erase_len);
+		printf("eraseD  %i / %i \r\n", flash_offset, erase_len);
 		flash_offset += erase_len;
 		rtos_delay_milliseconds(10);
 	}	
@@ -1758,10 +1760,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 			writebuf = request->received;
 			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
 			if (writelen < 0) {
-				rtos_delay_milliseconds(10);
-				printf("writelen<0");
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
-				rtos_delay_milliseconds(10);
 			}
 		}
 	} while ((towrite > 0) && (writelen >= 0));
