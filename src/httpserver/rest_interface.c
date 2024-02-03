@@ -249,6 +249,22 @@ static int http_rest_post(http_request_t* request) {
 		ADDLOG_DEBUG(LOG_FEATURE_API, "No OTA");
 #endif
 	}
+	if (!strcmp(request->url, "api/ot2")) {
+#if PLATFORM_BK7231T
+		return http_rest_post_dry(request, START_ADR_OF_BK_PARTITION_OTA, LFS_BLOCKS_END);
+#elif PLATFORM_BK7231N
+		return http_rest_post_dry(request, START_ADR_OF_BK_PARTITION_OTA, LFS_BLOCKS_END);
+#elif PLATFORM_W600
+		return http_rest_post_dry(request, -1, -1);
+#elif PLATFORM_BL602
+		return http_rest_post_dry(request, -1, -1);
+#elif PLATFORM_LN882H
+		return http_rest_post_dry(request, -1, -1);
+#else
+		// TODO
+		ADDLOG_DEBUG(LOG_FEATURE_API, "No OTA");
+#endif
+	}
 	if (!strncmp(request->url, "api/flash/", 10)) {
 		return http_rest_post_flash_advanced(request);
 	}
@@ -1741,6 +1757,178 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	poststr(request, NULL);
 	return 0;
 }
+
+static int http_rest_post_dry(http_request_t* request, int startaddr, int maxaddr) {
+	int total = 0;
+	int towrite = request->bodylen;
+	char* writebuf = request->bodystart;
+	int writelen = request->bodylen;
+
+	ADDLOG_DEBUG(LOG_FEATURE_OTA, "OTA post len %d", request->contentLength);
+
+
+#if PLATFORM_BL602
+	int sockfd, i;
+	int ret;
+	struct hostent *hostinfo;
+	uint8_t *recv_buffer;
+	struct sockaddr_in dest;
+	iot_sha256_context ctx;
+	uint8_t sha256_result[32];
+	uint8_t sha256_img[32];
+	bl_mtd_handle_t handle;
+	//init_ota(startaddr);
+
+
+#define OTA_PROGRAM_SIZE (512)
+	int ota_header_found, use_xz;
+	ota_header_t *ota_header = 0;
+
+	ret = bl_mtd_open(BL_MTD_PARTITION_NAME_FW_DEFAULT, &handle, BL_MTD_OPEN_FLAG_BACKUP);
+	if (ret) {
+		return http_rest_error(request, -20, "Open Default FW partition failed");
+	}
+
+	recv_buffer = pvPortMalloc(OTA_PROGRAM_SIZE);
+
+	unsigned int buffer_offset, flash_offset, ota_addr;
+	uint32_t bin_size, part_size;
+	uint8_t activeID;
+	HALPartition_Entry_Config ptEntry;
+
+	activeID = hal_boot2_get_active_partition();
+
+	printf("Starting OTA test. OTA bin addr is %p, incoming len %i\r\n", recv_buffer, writelen);
+
+	printf("[OTA] [TEST] activeID is %u\r\n", activeID);
+
+	if (hal_boot2_get_active_entries(BOOT2_PARTITION_TYPE_FW, &ptEntry)) {
+		printf("PtTable_Get_Active_Entries fail\r\n");
+		vPortFree(recv_buffer);
+		bl_mtd_close(handle);
+		return http_rest_error(request, -20, "PtTable_Get_Active_Entries fail");
+	}
+	ota_addr = ptEntry.Address[!ptEntry.activeIndex];
+	bin_size = ptEntry.maxLen[!ptEntry.activeIndex];
+	part_size = ptEntry.maxLen[!ptEntry.activeIndex];
+	(void)part_size;
+	/*XXX if you use bin_size is product env, you may want to set bin_size to the actual
+	 * OTA BIN size, and also you need to splilt XIP_SFlash_Erase_With_Lock into
+	 * serveral pieces. Partition size vs bin_size check is also needed
+	 */
+	printf("Starting OTA test. OTA size is %lu\r\n", bin_size);
+
+	printf("[OTA] [TEST] activeIndex is %u, use OTA address=%08x\r\n", ptEntry.activeIndex, (unsigned int)ota_addr);
+
+	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
+	printf("Done\r\n");
+
+	if (request->contentLength >= 0) {
+		towrite = request->contentLength;
+	}
+
+
+	buffer_offset = 0;
+	flash_offset = 0;
+	ota_header = 0;
+	use_xz = 0;
+
+	utils_sha256_init(&ctx);
+	utils_sha256_starts(&ctx);
+	memset(sha256_result, 0, sizeof(sha256_result));
+	do {
+		char *useBuf = writebuf;
+		int useLen = writelen;
+
+		if (ota_header == 0) {
+			int take_len;
+
+			// how much left for header?
+			take_len = OTA_PROGRAM_SIZE - buffer_offset;
+			// clamp to available len
+			if (take_len > useLen)
+				take_len = useLen;
+			printf("Header takes %i. ", take_len);
+			memcpy(recv_buffer + buffer_offset, writebuf, take_len);
+			buffer_offset += take_len;
+			useBuf = writebuf + take_len;
+			useLen = writelen - take_len;
+
+			if (buffer_offset >= OTA_PROGRAM_SIZE) {
+				ota_header = (ota_header_t*)recv_buffer;
+				if (strncmp((const char*)ota_header, "BL60X_OTA", 9)) {
+					return http_rest_error(request, -20, "Invalid header ident");
+				}
+			}
+		}
+
+
+		if (ota_header && useLen) {
+
+
+			if (flash_offset + useLen >= part_size) {
+				return http_rest_error(request, -20, "Too large bin");
+			}
+			//ADDLOG_DEBUG(LOG_FEATURE_OTA, "%d bytes to write", writelen);
+			//add_otadata((unsigned char*)writebuf, writelen);
+
+			printf("Flash takes %i. ", useLen);
+			utils_sha256_update(&ctx, (byte*)useBuf, useLen);
+			flash_offset += useLen;
+		}
+
+		total += writelen;
+		startaddr += writelen;
+		towrite -= writelen;
+
+
+		if (towrite > 0) {
+			writebuf = request->received;
+			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
+			if (writelen < 0) {
+				rtos_delay_milliseconds(10);
+				printf("writelen<0");
+				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
+				rtos_delay_milliseconds(10);
+			}
+		}
+	} while ((towrite > 0) && (writelen >= 0));
+
+	if (ota_header == 0) {
+		return http_rest_error(request, -20, "No header found");
+	}
+	utils_sha256_finish(&ctx, sha256_result);
+	puts("\r\nCalculated SHA256 Checksum:");
+	for (i = 0; i < sizeof(sha256_result); i++) {
+		printf("%02X", sha256_result[i]);
+	}
+	puts("\r\nHeader SHA256 Checksum:");
+	for (i = 0; i < sizeof(sha256_result); i++) {
+		printf("%02X", ota_header->u.s.sha256[i]);
+	}
+	if (memcmp(ota_header->u.s.sha256, sha256_result, sizeof(sha256_img))) {
+		/*Error found*/
+		return http_rest_error(request, -20, "SHA256 NOT Correct");
+	}
+	printf("[OTA] [TCP] prepare OTA partition info\r\n");
+	ptEntry.len = total;
+	printf("[OTA] [TCP] Update PARTITION, partition len is %lu\r\n", ptEntry.len);
+	printf("[OTA] [TCP] Rebooting\r\n");
+	//close_ota();
+	vPortFree(recv_buffer);
+	utils_sha256_free(&ctx);
+	bl_mtd_close(handle);
+
+#endif
+
+	ADDLOG_DEBUG(LOG_FEATURE_OTA, "%d total bytes written", total);
+	http_setup(request, httpMimeTypeJson);
+	hprintf255(request, "{\"size\":%d}", total);
+	poststr(request, NULL);
+	return 0;
+}
+
+
 
 static int http_rest_post_reboot(http_request_t* request) {
 	http_setup(request, httpMimeTypeJson);
