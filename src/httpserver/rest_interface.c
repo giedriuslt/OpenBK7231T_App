@@ -1551,7 +1551,20 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
 	hal_update_mfg_ptable();
-	bl_mtd_erase_all(handle);
+	// bl_mtd_erase_all(handle);
+	flash_offset = 0;
+	uint32_t erase_len = 0;
+	while (flash_offset < part_size);
+	{
+		erase_len = part_size - flash_offset;
+		if (erase_len > 0x10000)
+		{
+			erase_len = 0x10000; //erase in 64kb chunks
+		}
+		bl_mtd_erase(handle, flash_offset, erase_len);
+		flash_offset += erase_len;
+		rtos_delay_milliseconds(10);
+	}	
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
@@ -1825,7 +1838,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	printf("[OTA] [TEST] activeIndex is %u, use OTA address=%08x\r\n", ptEntry.activeIndex, (unsigned int)ota_addr);
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
-	rtos_delay_milliseconds(3000);
+	//rtos_delay_milliseconds(3000);
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
