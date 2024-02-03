@@ -1765,7 +1765,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	int writelen = request->bodylen;
 
 	ADDLOG_DEBUG(LOG_FEATURE_OTA, "OTA post len %d", request->contentLength);
-
+#if PLATFORM_BL602
 
 	int sockfd, i;
 	int ret;
