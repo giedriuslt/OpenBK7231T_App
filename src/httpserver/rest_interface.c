@@ -1745,7 +1745,10 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 			writebuf = request->received;
 			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
 			if (writelen < 0) {
+				rtos_delay_milliseconds(10);
+				printf("writelen<0");
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
+				rtos_delay_milliseconds(10);
 			}
 		}
 	} while ((towrite > 0) && (writelen >= 0));
@@ -1822,6 +1825,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	printf("[OTA] [TEST] activeIndex is %u, use OTA address=%08x\r\n", ptEntry.activeIndex, (unsigned int)ota_addr);
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
+	rtos_delay_milliseconds(3000);
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
