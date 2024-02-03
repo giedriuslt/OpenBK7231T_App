@@ -1563,11 +1563,12 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 		}
 		printf("erase  %lu / %lu \r\n", erase_offset, erase_len);
 		rtos_delay_milliseconds(100);
-		bl_mtd_erase(handle, erase_offset, erase_len);
+		// bl_mtd_erase(handle, erase_offset, erase_len);
 		printf("eraseD  %lu / %lu \r\n", erase_offset, erase_len);
 		erase_offset += erase_len;
 		rtos_delay_milliseconds(10);
 	}	
+	return http_rest_error(request, -20, "No header found");
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
@@ -1784,7 +1785,6 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	ADDLOG_DEBUG(LOG_FEATURE_OTA, "OTA post len %d", request->contentLength);
 
 
-#if PLATFORM_BL602
 	int sockfd, i;
 	int ret;
 	struct hostent *hostinfo;
@@ -1838,13 +1838,51 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	printf("[OTA] [TEST] activeIndex is %u, use OTA address=%08x\r\n", ptEntry.activeIndex, (unsigned int)ota_addr);
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
-	//rtos_delay_milliseconds(3000);
+	//hal_update_mfg_ptable();
+	// bl_mtd_erase_all(handle);
+	uint32_t erase_offset = 0;
+	uint32_t erase_len = 0;
+	while (erase_offset < bin_size);
+	{
+		erase_len = bin_size - flash_offset;
+		if (erase_len > 0x10000)
+		{
+			erase_len = 0x10000; //erase in 64kb chunks
+		}
+		printf("erase  %lu / %lu \r\n", erase_offset, erase_len);
+		rtos_delay_milliseconds(100);
+		// bl_mtd_erase(handle, erase_offset, erase_len);
+		printf("eraseD  %lu / %lu \r\n", erase_offset, erase_len);
+		erase_offset += erase_len;
+		rtos_delay_milliseconds(10);
+	}	
+	return http_rest_error(request, -20, "No header found");
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
 		towrite = request->contentLength;
 	}
 
+	// get header
+	// recv_buffer	
+	//buffer_offset = 0;
+	//do {
+	//	int take_len;
+
+	//	take_len = OTA_PROGRAM_SIZE - buffer_offset;
+
+	//	memcpy(recv_buffer + buffer_offset, writebuf, writelen);
+	//	buffer_offset += writelen;
+
+
+	//	if (towrite > 0) {
+	//		writebuf = request->received;
+	//		writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
+	//		if (writelen < 0) {
+	//			ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
+	//		}
+	//	}
+	//} while(true)
 
 	buffer_offset = 0;
 	flash_offset = 0;
@@ -1892,6 +1930,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 
 			printf("Flash takes %i. ", useLen);
 			utils_sha256_update(&ctx, (byte*)useBuf, useLen);
+			bl_mtd_write(handle, flash_offset, useLen, (byte*)useBuf);
 			flash_offset += useLen;
 		}
 
@@ -1904,10 +1943,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 			writebuf = request->received;
 			writelen = recv(request->fd, writebuf, request->receivedLenmax, 0);
 			if (writelen < 0) {
-				rtos_delay_milliseconds(10);
-				printf("writelen<0");
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
-				rtos_delay_milliseconds(10);
 			}
 		}
 	} while ((towrite > 0) && (writelen >= 0));
@@ -1931,6 +1967,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	printf("[OTA] [TCP] prepare OTA partition info\r\n");
 	ptEntry.len = total;
 	printf("[OTA] [TCP] Update PARTITION, partition len is %lu\r\n", ptEntry.len);
+	hal_boot2_update_ptable(&ptEntry);
 	printf("[OTA] [TCP] Rebooting\r\n");
 	//close_ota();
 	vPortFree(recv_buffer);
