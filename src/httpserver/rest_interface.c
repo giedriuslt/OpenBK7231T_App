@@ -1834,15 +1834,11 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 		}
 		printf("erase  %lu / %lu \r\n", erase_offset, erase_len);
 		rtos_delay_milliseconds(100);
-		// bl_mtd_erase(handle, erase_offset, erase_len);
+		bl_mtd_erase(handle, erase_offset, erase_len);
 		printf("eraseD  %lu / %lu \r\n", erase_offset, erase_len);
 		erase_offset += erase_len;
 		rtos_delay_milliseconds(10);
 	}	
-	http_setup(request, httpMimeTypeJson);
-	hprintf255(request, "{\"fail\":%d}", 3);
-	poststr(request, NULL);
-	return 0;
 	printf("Done\r\n");
 
 	if (request->contentLength >= 0) {
