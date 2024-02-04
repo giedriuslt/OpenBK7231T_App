@@ -164,11 +164,11 @@ static int http_rest_get(http_request_t* request) {
 		// double check again that we're within bounds - don't want
 		// boot overwrite or anything nasty....
 		if (newstart < LFS_BLOCKS_START_MIN) {
-			return http_rest_error(request, -20, "LFS Size mismatch");
+			return http_rest_error(request, 400, "LFS Size mismatch");
 		}
 		if ((newstart + newsize > LFS_BLOCKS_END) ||
 			(newstart + newsize < LFS_BLOCKS_START_MIN)) {
-			return http_rest_error(request, -20, "LFS Size mismatch");
+			return http_rest_error(request, 400, "LFS Size mismatch");
 		}
 
 		return http_rest_get_flash(request, newstart, newsize);
@@ -288,11 +288,11 @@ static int http_rest_post(http_request_t* request) {
 		// double check again that we're within bounds - don't want
 		// boot overwrite or anything nasty....
 		if (newstart < LFS_BLOCKS_START_MIN) {
-			return http_rest_error(request, -20, "LFS Size mismatch");
+			return http_rest_error(request, 400, "LFS Size mismatch");
 		}
 		if ((newstart + newsize > LFS_BLOCKS_END) ||
 			(newstart + newsize < LFS_BLOCKS_START_MIN)) {
-			return http_rest_error(request, -20, "LFS Size mismatch");
+			return http_rest_error(request, 400, "LFS Size mismatch");
 		}
 
 		// we are writing the lfs block
@@ -1393,7 +1393,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 	if (writelen < 0) {
 		ADDLOG_DEBUG(LOG_FEATURE_OTA, "ABORTED: %d bytes to write", writelen);
-		return http_rest_error(request, -20, "writelen < 0");
+		return http_rest_error(request, 400, "writelen < 0");
 	}
 
 	struct pbuf* p;
@@ -1515,7 +1515,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 	ret = bl_mtd_open(BL_MTD_PARTITION_NAME_FW_DEFAULT, &handle, BL_MTD_OPEN_FLAG_BACKUP);
 	if (ret) {
-		return http_rest_error(request, -20, "Open Default FW partition failed");
+		return http_rest_error(request, 400, "Open Default FW partition failed");
 	}
 
 	recv_buffer = pvPortMalloc(OTA_PROGRAM_SIZE);
@@ -1535,7 +1535,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 		printf("PtTable_Get_Active_Entries fail\r\n");
 		vPortFree(recv_buffer);
 		bl_mtd_close(handle);
-		return http_rest_error(request, -20, "PtTable_Get_Active_Entries fail");
+		return http_rest_error(request, 400, "PtTable_Get_Active_Entries fail");
 	}
 	ota_addr = ptEntry.Address[!ptEntry.activeIndex];
 	bin_size = ptEntry.maxLen[!ptEntry.activeIndex];
@@ -1551,8 +1551,23 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 	printf("[OTA] [TEST] Erase flash with size %lu...", bin_size);
 	hal_update_mfg_ptable();
-	bl_mtd_erase_all(handle);
-	printf("Done\r\n");
+	
+	//erase in chunks, because erasing everything at once is slow and causes issues with http connection
+	uint32_t erase_offset = 0;
+	uint32_t erase_len = 0;
+	while (erase_offset < bin_size)
+	{
+		erase_len = bin_size - erase_offset;
+		if (erase_len > 0x10000)
+		{
+			erase_len = 0x10000; //erase in 64kb chunks
+		}
+		bl_mtd_erase(handle, erase_offset, erase_len);
+		printf("[OTA] Erased:  %lu / %lu \r\n", erase_offset, erase_len);
+		erase_offset += erase_len;
+		rtos_delay_milliseconds(100);
+	}
+	printf("[OTA] Done\r\n");
 
 	if (request->contentLength >= 0) {
 		towrite = request->contentLength;
@@ -1608,7 +1623,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 			if (buffer_offset >= OTA_PROGRAM_SIZE) {
 				ota_header = (ota_header_t*)recv_buffer;
 				if (strncmp((const char*)ota_header, "BL60X_OTA", 9)) {
-					return http_rest_error(request, -20, "Invalid header ident");
+					return http_rest_error(request, 400, "Invalid header ident");
 				}
 			}
 		}
@@ -1618,7 +1633,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 
 			if (flash_offset + useLen >= part_size) {
-				return http_rest_error(request, -20, "Too large bin");
+				return http_rest_error(request, 400, "Too large bin");
 			}
 			//ADDLOG_DEBUG(LOG_FEATURE_OTA, "%d bytes to write", writelen);
 			//add_otadata((unsigned char*)writebuf, writelen);
@@ -1644,7 +1659,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	} while ((towrite > 0) && (writelen >= 0));
 
 	if (ota_header == 0) {
-		return http_rest_error(request, -20, "No header found");
+		return http_rest_error(request, 400, "No header found");
 	}
 	utils_sha256_finish(&ctx, sha256_result);
 	puts("\r\nCalculated SHA256 Checksum:");
@@ -1657,7 +1672,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 	}
 	if (memcmp(ota_header->u.s.sha256, sha256_result, sizeof(sha256_img))) {
 		/*Error found*/
-		return http_rest_error(request, -20, "SHA256 NOT Correct");
+		return http_rest_error(request, 400, "SHA256 NOT Correct");
 	}
 	printf("[OTA] [TCP] prepare OTA partition info\r\n");
 	ptEntry.len = total;
@@ -1732,7 +1747,7 @@ static int http_rest_post_flash(http_request_t* request, int startaddr, int maxa
 
 	if (writelen < 0 || (startaddr + writelen > maxaddr)) {
 		ADDLOG_DEBUG(LOG_FEATURE_OTA, "ABORTED: %d bytes to write", writelen);
-		return http_rest_error(request, -20, "writelen < 0 or end > 0x200000");
+		return http_rest_error(request, 400, "writelen < 0 or end > 0x200000");
 	}
 
 	do {
@@ -1786,7 +1801,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 
 	ret = bl_mtd_open(BL_MTD_PARTITION_NAME_FW_DEFAULT, &handle, BL_MTD_OPEN_FLAG_BACKUP);
 	if (ret) {
-		return http_rest_error(request, -20, "Open Default FW partition failed");
+		return http_rest_error(request, 400, "Open Default FW partition failed");
 	}
 
 	recv_buffer = pvPortMalloc(OTA_PROGRAM_SIZE);
@@ -1806,7 +1821,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 		printf("PtTable_Get_Active_Entries fail\r\n");
 		vPortFree(recv_buffer);
 		bl_mtd_close(handle);
-		return http_rest_error(request, -20, "PtTable_Get_Active_Entries fail");
+		return http_rest_error(request, 400, "PtTable_Get_Active_Entries fail");
 	}
 	ota_addr = ptEntry.Address[!ptEntry.activeIndex];
 	bin_size = ptEntry.maxLen[!ptEntry.activeIndex];
@@ -1895,7 +1910,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 			if (buffer_offset >= OTA_PROGRAM_SIZE) {
 				ota_header = (ota_header_t*)recv_buffer;
 				if (strncmp((const char*)ota_header, "BL60X_OTA", 9)) {
-					return http_rest_error(request, -20, "Invalid header ident");
+					return http_rest_error(request, 400, "Invalid header ident");
 				}
 			}
 		}
@@ -1905,7 +1920,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 
 
 			if (flash_offset + useLen >= part_size) {
-				return http_rest_error(request, -20, "Too large bin");
+				return http_rest_error(request, 400, "Too large bin");
 			}
 			//ADDLOG_DEBUG(LOG_FEATURE_OTA, "%d bytes to write", writelen);
 			//add_otadata((unsigned char*)writebuf, writelen);
@@ -1931,7 +1946,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	} while ((towrite > 0) && (writelen >= 0));
 
 	if (ota_header == 0) {
-		return http_rest_error(request, -20, "No header found");
+		return http_rest_error(request, 400, "No header found");
 	}
 	utils_sha256_finish(&ctx, sha256_result);
 	puts("\r\nCalculated SHA256 Checksum:");
@@ -1944,7 +1959,7 @@ static int http_rest_post_dry(http_request_t* request, int startaddr, int maxadd
 	}
 	if (memcmp(ota_header->u.s.sha256, sha256_result, sizeof(sha256_img))) {
 		/*Error found*/
-		return http_rest_error(request, -20, "SHA256 NOT Correct");
+		return http_rest_error(request, 400, "SHA256 NOT Correct");
 	}
 	printf("[OTA] [TCP] prepare OTA partition info\r\n");
 	ptEntry.len = total;
@@ -1985,7 +2000,7 @@ static int http_rest_get_flash_advanced(http_request_t* request) {
 	if (sres == 2) {
 		return http_rest_get_flash(request, startaddr, len);
 	}
-	return http_rest_error(request, -1, "invalid url");
+	return http_rest_error(request, 400, "invalid url");
 }
 
 static int http_rest_post_flash_advanced(http_request_t* request) {
@@ -1997,7 +2012,7 @@ static int http_rest_post_flash_advanced(http_request_t* request) {
 		// allow up to end of flash
 		return http_rest_post_flash(request, startaddr, 0x200000);
 	}
-	return http_rest_error(request, -1, "invalid url");
+	return http_rest_error(request, 400, "invalid url");
 }
 
 static int http_rest_get_flash(http_request_t* request, int startaddr, int len) {
@@ -2005,7 +2020,7 @@ static int http_rest_get_flash(http_request_t* request, int startaddr, int len) 
 	int res;
 
 	if (startaddr < 0 || (startaddr + len > 0x200000)) {
-		return http_rest_error(request, -1, "requested flash read out of range");
+		return http_rest_error(request, 400, "requested flash read out of range");
 	}
 
 	buffer = os_malloc(1024);
