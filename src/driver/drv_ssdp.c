@@ -63,9 +63,10 @@ typedef struct OBK_DEVICE_tag{
     int timeout; // seconds
 } OBK_DEVICE;
 
-OBK_DEVICE obkDevices[MAX_OBK_DEVICES*100] ={0};
+OBK_DEVICE obkDevices[MAX_OBK_DEVICES];
 
 static void obkDeviceTick(uint32_t ip){
+    addLogAdv(LOG_EXTRADEBUG, LOG_FEATURE_HTTP,"Obkdevices at start tick is  0x%d",(int)obkDevices);
     int i;
     for (i = 0; i < MAX_OBK_DEVICES; i++){
         if (obkDevices[i].ip == ip){
@@ -85,6 +86,7 @@ static void obkDeviceTick(uint32_t ip){
             }
         }
     }
+    addLogAdv(LOG_EXTRADEBUG, LOG_FEATURE_HTTP,"Obkdevices at end tick is  %d",(int)obkDevices);
 }
 
 static void obkDeviceList(){
@@ -421,8 +423,10 @@ void DRV_SSDP_Init()
         return;
     }
 
+    addLogAdv(LOG_EXTRADEBUG, LOG_FEATURE_HTTP,"Obkdevices before memset is  0x%d",(int)obkDevices);
     memset(obkDevices, 0, sizeof(obkDevices));
-
+    addLogAdv(LOG_EXTRADEBUG, LOG_FEATURE_HTTP,"Obkdevices after memset is  0x%d",(int)obkDevices);
+	
     addLogAdv(LOG_INFO, LOG_FEATURE_HTTP,"DRV_SSDP_Init");
     // like "e427ce1a-3e80-43d0-ad6f-89ec42e46363";
     snprintf(g_ssdp_uuid, sizeof(g_ssdp_uuid), "%08x-%04x-%04x-%04x-%04x%08x",
