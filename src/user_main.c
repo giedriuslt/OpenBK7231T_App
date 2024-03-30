@@ -773,7 +773,7 @@ void Main_OnEverySecond()
 #ifdef PLATFORM_BEKEN
 	bk_wdg_reload();
 #elif PLATFORM_BL602
-	bl_wdt_feed();
+	//bl_wdt_feed();
 #endif
 	// force it to sleep...  we MUST have some idle task processing
 	// else task memory doesn't get freed
