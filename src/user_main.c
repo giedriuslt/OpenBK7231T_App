@@ -84,7 +84,6 @@ static char g_currentIPString[32] = { 0 };
 static HALWifiStatus_t g_newWiFiStatus = WIFI_UNDEFINED;
 static HALWifiStatus_t g_prevWiFiStatus = WIFI_UNDEFINED;
 static int g_noMQTTTime = 0;
-
 uint8_t g_StartupDelayOver = 0;
 
 uint32_t idleCount = 0;
@@ -773,7 +772,7 @@ void Main_OnEverySecond()
 #ifdef PLATFORM_BEKEN
 	bk_wdg_reload();
 #elif PLATFORM_BL602
-	//bl_wdt_feed();
+	bl_wdt_feed();
 #endif
 	// force it to sleep...  we MUST have some idle task processing
 	// else task memory doesn't get freed
