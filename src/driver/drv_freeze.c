@@ -7,12 +7,12 @@ static int tmp_result =1;
 void Freeze_OnEverySecond() {
 	while (1) {
 		// freeze
-		tmp_result = tmp_divi/tmp_div;
+		rtos_delay_milliseconds(1);
 	}
 }
 void Freeze_RunFrame() {
 	while (1) {
-		tmp_result = tmp_divi/tmp_div;
+		rtos_delay_milliseconds(1);
 	}
 }
 void Freeze_Init() {
