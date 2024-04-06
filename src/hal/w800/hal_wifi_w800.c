@@ -105,7 +105,7 @@ int HAL_GetWifiStrength()
 {
 	struct tls_curr_bss_t bss;
 	tls_wifi_get_current_bss(&bss);
-	return bss.rssi;
+	return -1*bss.rssi; //seems that rssi reporting is inverted on W600
 }
 
 static void apsta_net_status(u8 status)
