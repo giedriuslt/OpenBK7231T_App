@@ -122,7 +122,6 @@
 #define ENABLE_DRIVER_WEMO		1
 #define ENABLE_DRIVER_HUE		1
 #define ENABLE_DRIVER_DHT		1
-#define ENABLE_DRIVER_FREEZE	1
 
 #else
 
