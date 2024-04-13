@@ -274,6 +274,9 @@ void BL0937_RunEverySecond(void) {
 	float final_p;
 	bool bNeedRestart;
 	portTickType ticksElapsed;
+	while(1) {
+		//freeze
+	}
 
 	bNeedRestart = false;
 	if (g_invertSEL) {
