@@ -220,6 +220,13 @@ void wifi_init_sta(const char* oob_ssid, const char* connect_key, obkStaticIP_t 
 
     //2. net device(lwip)
     netdev_set_mac_addr(NETIF_IDX_STA, mac_addr);
+
+    tcpip_ip_info_t  ip_info;
+    ip_info.ip.addr      = ipaddr_addr((const char *)"192.168.1.99");
+    ip_info.gw.addr      = ipaddr_addr((const char *)"192.168.1.1");
+    ip_info.netmask.addr = ipaddr_addr((const char *)"255.255.255.0");
+
+    netdev_set_ip_info(NETIF_IDX_AP, &ip_info);
     netdev_set_active(NETIF_IDX_STA);
 
     //3. wifi start
