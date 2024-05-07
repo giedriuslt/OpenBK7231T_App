@@ -1198,12 +1198,17 @@ static int MQTT_do_connect(mqtt_client_t* client)
 		  to establish a connection with the server.
 		  For now MQTT version 3.1.1 is always used */
 
+		portTickType cs_time;
+		portTickType ce_time;
+		cs_time = xTaskGetTickCount();
 		LOCK_TCPIP_CORE();
 		res = mqtt_client_connect(mqtt_client,
 			&mqtt_ip, mqtt_port,
 			mqtt_connection_cb, LWIP_CONST_CAST(void*, &mqtt_client_info),
 			&mqtt_client_info);
 		UNLOCK_TCPIP_CORE();
+		ce_time = xTaskGetTickCount();
+		addLogAdv(LOG_INFO, LOG_FEATURE_MQTT, "Connect time in mqtt_client_connect - code: %lu (%s)\n", ce_time - cs_time);
 		mqtt_connect_result = res;
 		if (res != ERR_OK)
 		{
