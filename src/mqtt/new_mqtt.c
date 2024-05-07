@@ -1208,7 +1208,7 @@ static int MQTT_do_connect(mqtt_client_t* client)
 			&mqtt_client_info);
 		UNLOCK_TCPIP_CORE();
 		ce_time = xTaskGetTickCount();
-		addLogAdv(LOG_INFO, LOG_FEATURE_MQTT, "Connect time in mqtt_client_connect - code: %lu (%s)\n", ce_time - cs_time);
+		addLogAdv(LOG_INFO, LOG_FEATURE_MQTT, "Connect time in mqtt_client_connect - code: %lu\n", ce_time - cs_time);
 		mqtt_connect_result = res;
 		if (res != ERR_OK)
 		{
