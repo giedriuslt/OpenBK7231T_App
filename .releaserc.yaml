@@ -2,6 +2,8 @@ branches:
   - name: 'main'
   - name: 'alpha'
     prerelease: 'alpha'
+  - name: 'beta'
+    prerelease: 'beta'
 preset: "angular"
 tagFormat: "${version}"
 plugins:
