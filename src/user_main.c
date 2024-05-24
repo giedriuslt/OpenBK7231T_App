@@ -1033,7 +1033,7 @@ void Main_Init_AfterDelay_Unsafe(bool bStartAutoRunScripts) {
 	//NVIC_EnableIRQ(WDT_IRQn);
     
 	/* Enable watchdog */
-	hal_wdt_en(WDT_BASE,HAL_ENABLE);
+	//hal_wdt_en(WDT_BASE,HAL_ENABLE);
 #endif
 }
 void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
