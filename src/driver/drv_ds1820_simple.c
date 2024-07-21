@@ -70,6 +70,7 @@ void usleepds(int r) //delay function do 10*r nops, because rtos_delay_milliseco
 		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
 		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
 		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");	// 5
+		__asm__("nop\nnop\nnop\nnop\nnop");
 	}
 #elif PLATFORM_LN882H
 	for (volatile int i = 0; i < r; i++) {
@@ -308,6 +309,29 @@ int OWTouchByte(int Pin, int data)
 }
 
 
+
+
+uint8_t OWcrc( uint8_t *data, uint8_t len)
+{
+	uint8_t crc = 0;
+	
+	while (len--) {
+		uint8_t inb = *data++;
+		for (uint8_t i = 8; i; i--) {
+			uint8_t mix = (crc ^ inb) & 0x01;
+			crc >>= 1;
+			if (mix) crc ^= 0x8C;
+			inb >>= 1;
+		}
+	}
+	return crc;
+}
+
+
+
+
+
+
 int DS1820_getTemp() {
 	return t;
 }
@@ -323,12 +347,13 @@ void DS1820_AppendInformationToHTTPIndexPage(http_request_t *request)
 }
 
 
+
 void DS1820_OnEverySecond() {
 
 	// for now just find the pin used
 	//
 	Pin=PIN_FindPinIndexForRole(IOR_DS1820_IO, 99);
-
+	uint8_t scratchpad[9], crc;
 	if (Pin != 99) {	// only if pin is set
 		// request temp if conversion was requested two seconds after request
 		// if (dsread == 1 && g_secondsElapsed % 5 == 2) {
@@ -342,26 +367,41 @@ void DS1820_OnEverySecond() {
 			OWWriteByte(Pin,0xCC);
 			OWWriteByte(Pin,0xBE);
 
-			Low = OWReadByte(Pin);
-			High = OWReadByte(Pin);
-
-
-			Val = (High << 8) + Low; // combine bytes to integer
-			negative = (High >= 8); // negative temperature
-			if (negative)
+			for (int i = 0; i < 9; i++)
+			  {
+			    scratchpad[i] = OWReadByte(Pin);//read Scratchpad Memory of DS
+			  }
+			crc= OWcrc(scratchpad, 8);
+			if (crc != scratchpad[8])
 			{
-			  Val = (Val ^ 0xffff) + 1;
+				addLogAdv(LOG_ERROR, LOG_FEATURE_CFG, "DS1820 - Read CRC=%x != calculated:%x \r\n",scratchpad[8],crc);			
+			}	
+			else
+			{		
+	//			Low = OWReadByte(Pin);
+	//			High = OWReadByte(Pin);
+				Low = scratchpad[0];
+				High = scratchpad[1];
+			
+
+				Val = (High << 8) + Low; // combine bytes to integer
+				negative = (High >= 8); // negative temperature
+				if (negative)
+				{
+				  Val = (Val ^ 0xffff) + 1;
+				}
+				// Temperature is returned in multiples of 1/16 °C
+				//  we want a simple way to display e.g. xx.yy °C, so just multiply with 100 and we get xxyy 
+				//  --> the last two digits will be the fractional part  (Val%100)
+				// -->  the whole part of temperature is (int)Val/100
+				// so we want 100/16 = 6.25 times the value (the sign to be able to show negative temperatures is in "factor") 
+				Tc = (6 * Val) + Val / 4 ;
+				t = negative ? -1 : 1 * Tc ;
+				dsread=0;
+				crc= OWcrc(scratchpad, 8);
+				addLogAdv(LOG_INFO, LOG_FEATURE_CFG, "DS1820 - Pin=%i temp=%s%i.%02i \r\n",Pin, negative ? "-" : "+", (int)Tc/100 , (int)Tc%100);
+				addLogAdv(LOG_INFO, LOG_FEATURE_CFG, "DS1820 - High=%i Low=%i Val=%i Tc=%i  -- Read CRC=%x - calculated:%x \r\n",High, Low, Val,Tc,scratchpad[8],crc);
 			}
-			// Temperature is returned in multiples of 1/16 °C
-			//  we want a simple way to display e.g. xx.yy °C, so just multiply with 100 and we get xxyy 
-			//  --> the last two digits will be the fractional part  (Val%100)
-			// -->  the whole part of temperature is (int)Val/100
-			// so we want 100/16 = 6.25 times the value (the sign to be able to show negative temperatures is in "factor") 
-			Tc = (6 * Val) + Val / 4 ;
-			t = negative ? -1 : 1 * Tc ;
-			dsread=0;
-			addLogAdv(LOG_INFO, LOG_FEATURE_CFG, "DS1820 - Pin=%i temp=%s%i.%02i \r\n",Pin, negative ? "-" : "+", (int)Tc/100 , (int)Tc%100);
-			addLogAdv(LOG_INFO, LOG_FEATURE_CFG, "DS1820 - High=%i Low=%i Val=%i Tc=%i \r\n",High, Low, Val,Tc);
 		}
 		else if (g_secondsElapsed % 5 == 0) {	// every 5 seconds
 				// ask for "conversion" 
