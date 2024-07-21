@@ -52,6 +52,7 @@ void HTTPServer_Start()
 	{
 		ADDLOG_ERROR(LOG_FEATURE_HTTP, "create \"TCP_server\" thread failed with %i!\r\n", err);
 	}
+	ADDLOG_ERROR(LOG_FEATURE_HTTP, "created tcp_server_thread");
 }
 
 
@@ -75,6 +76,7 @@ static void tcp_client_thread(beken_thread_arg_t arg)
 
   //my_fd = fd;
 	rtos_delay_milliseconds(20);
+	ADDLOG_ERROR(LOG_FEATURE_HTTP, "starting tcp_client_thread");
 
 	reply = (char*)os_malloc(replyBufferSize);
 	buf = (char*)os_malloc(INCOMING_BUFFER_SIZE);
@@ -235,6 +237,7 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 					lwip_close(client_fd);
 					client_fd = -1;
 				}
+					ADDLOG_ERROR(LOG_FEATURE_HTTP, "created tcp_client_thread");
 #endif
 			}
 		}
