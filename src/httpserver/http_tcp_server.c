@@ -102,11 +102,12 @@ static void tcp_client_thread(beken_thread_arg_t arg)
 		int remaining = request.receivedLenmax - request.receivedLen;
 		int received = recv(fd, request.received + request.receivedLen, remaining, 0);
 		if (received <= 0) {
-			printf("Stopping %d / %d\n", received, request.receivedLen);
+			ADDLOG_ERROR(LOG_FEATURE_HTTP, "TCP recv <=0 %i\n", received);
 			break;
 		}
 		request.receivedLen += received;
 		if (received < remaining) {
+			ADDLOG_ERROR(LOG_FEATURE_HTTP, "TCP recv <rem  %i/%i \n", received, remaining);
 			break;
 		}
 		// grow by 1024
@@ -114,7 +115,7 @@ static void tcp_client_thread(beken_thread_arg_t arg)
 		request.received = (char*)realloc(request.received, request.receivedLenmax+2);
 		if (request.received == NULL) {
 			// no memory
-			printf("realloc fail %d / %d\n", received, request.receivedLen);
+			ADDLOG_ERROR(LOG_FEATURE_HTTP, "realloc fail %i / %i\n", received, request.receivedLen);
 			return;
 		}
 	}
