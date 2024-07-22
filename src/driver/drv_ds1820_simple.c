@@ -28,6 +28,7 @@ void usleepds(int r) //delay function do 10*r nops, because rtos_delay_milliseco
 		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
 		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
 		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
+		__asm__("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
 	}
 #elif PLATFORM_W600
 	for (volatile int i = 0; i < r; i++) {
