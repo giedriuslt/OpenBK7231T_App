@@ -1,4 +1,5 @@
 #include "drv_ds1820_simple.h"
+#include <task.h>
 
 static uint8_t   dsread=0;
 static int Pin;
@@ -133,6 +134,7 @@ int OWReset(int Pin)
 //
 void OWWriteBit(int Pin, int bit)
 {
+		taskENTER_CRITICAL();
         if (bit)
         {
                 // Write '1' bit
@@ -151,6 +153,7 @@ void OWWriteBit(int Pin, int bit)
                 HAL_PIN_SetOutputValue(Pin,1); // Releases the bus
                 usleepds(OWtimeD);
         }
+        taskEXIT_CRITICAL();
 }
 
 //-----------------------------------------------------------------------------
@@ -159,7 +162,7 @@ void OWWriteBit(int Pin, int bit)
 int OWReadBit(int Pin)
 {
         int result;
-
+		taskENTER_CRITICAL();
         HAL_PIN_Setup_Output(Pin);
         HAL_PIN_SetOutputValue(Pin,0); // Drives DQ low
         usleepds(OWtimeA);
@@ -169,6 +172,7 @@ int OWReadBit(int Pin)
 //        result = HAL_PIN_ReadDigitalInput(Pin) ^ 0x01; // Sample for presence pulse from slave
         result = HAL_PIN_ReadDigitalInput(Pin); // Sample for presence pulse from slave
         usleepds(OWtimeF); // Complete the time slot and 10us recovery
+        taskEXIT_CRITICAL();
         return result;
 }
 
