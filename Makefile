@@ -56,8 +56,8 @@ sdk/OpenXR809/project/oxr_sharedApp/shared:
 	ln -s "$(shell pwd)/" "sdk/OpenXR809/project/oxr_sharedApp/shared"
 
 sdk/OpenBL602/customer_app/bl602_sharedApp/bl602_sharedApp/shared:
-	@echo perm
-	chmod +x sdk/OpenBL602/toolchain/riscv/Linux/libexec/gcc/riscv64-unknown-elf/10.2.0/*
+	#cannot symlink shared directly, because sdk is looking for stuff recursively and crashes
+	#so only linking source and copying required file
 	@echo mkdir shared
 	mkdir sdk/OpenBL602/customer_app/bl602_sharedApp/bl602_sharedApp/shared
 	cp ./bouffalo.mk sdk/OpenBL602/customer_app/bl602_sharedApp/bl602_sharedApp/shared
