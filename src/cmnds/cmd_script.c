@@ -1,6 +1,7 @@
 
 #include "../logging/logging.h"
 #include "../new_pins.h"
+#include "../new_common.h"
 #include "../new_cfg.h"
 #include "../obk_config.h"
 #include "../driver/drv_public.h"
