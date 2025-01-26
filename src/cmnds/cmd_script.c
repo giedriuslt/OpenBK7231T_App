@@ -300,12 +300,12 @@ scriptFile_t *SVM_RegisterFile(const char *fname) {
 	r->fname = strdup(fname);
 	// cast from byte* to char*
 	if (!strcmp(fname, "@startup")) {
-		printf("before dup cfg\n");
+		bk_printf("before dup cfg\n");
 		r->data = strdup(CFG_GetShortStartupCommand());
-		printf("after dup cfg\n");
+		bk_printf("after dup cfg\n");
 	}
 	else {
-		printf("rading file\n");
+		bk_printf("rading file\n");
 		r->data = (char*)LFS_ReadFile(fname);
 	}
 	r->next = g_scriptFiles;
@@ -626,14 +626,14 @@ scriptInstance_t *SVM_StartScript(const char *fname, const char *label, int uniq
 	return th;
 }
 void SVM_RunStartupCommandAsScript() 
-	printf("getting starptop script\n");
+	bk_printf("getting starptop script\n");
 	scriptInstance_t *th = SVM_StartScript("@startup", 0, 0);
-	printf("got startup script\n");
+	bk_printf("got startup script\n");
 	if (th) {
 		//ADDLOG_INFO(LOG_FEATURE_CMD, "SVM_RunStartupCommandAsScript: started command run");
 		// Hacky as hell?
 		g_activeThread = th;
-		printf("runnins startup cript cfg\n");
+		bk_printf("runnins startup cript cfg\n");
 		SVM_RunThread(g_activeThread, 200);
 		g_activeThread = 0;
 	}
