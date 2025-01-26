@@ -626,7 +626,7 @@ scriptInstance_t *SVM_StartScript(const char *fname, const char *label, int uniq
 
 	return th;
 }
-void SVM_RunStartupCommandAsScript() 
+void SVM_RunStartupCommandAsScript() {
 	bk_printf("getting starptop script\n");
 	scriptInstance_t *th = SVM_StartScript("@startup", 0, 0);
 	bk_printf("got startup script\n");
