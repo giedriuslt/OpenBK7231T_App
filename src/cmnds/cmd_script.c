@@ -302,7 +302,7 @@ scriptFile_t *SVM_RegisterFile(const char *fname) {
 	// cast from byte* to char*
 	if (!strcmp(fname, "@startup")) {
 		bk_printf("before dup cfg\n len [%i] ", strlen(CFG_GetShortStartupCommand()));
-		char * cm_ = malloc(strlen(CFG_GetShortStartupCommand())+4);
+		char * cm_ = malloc(strlen(CFG_GetShortStartupCommand())+4096);
 		strcpy(cm_, CFG_GetShortStartupCommand());
 		r->data = cm_;
 		bk_printf("after dup cfg\n");
@@ -420,6 +420,7 @@ void SVM_RunThread(scriptInstance_t *t, int maxLoops) {
 
 				p = start-t->curFile->data;
 				///ADDLOG_EXTRADEBUG(LOG_FEATURE_CMD, "[Loop %i] Script line: %s, char index %i",loop,g_scrBuffer,p);
+				bk_printf("executing cmd: %s \n", g_scrBuffer);
 				CMD_ExecuteCommand(g_scrBuffer,0);
 
 				// did we get a sleep?
