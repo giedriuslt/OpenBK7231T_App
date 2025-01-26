@@ -180,7 +180,7 @@ void user_main(void)
 
 
   err = rtos_init_timer(&g_main_timer_1s,
-                        1 * 1000,
+                        1 * 1100,
                         Main_OnEverySecond,
                         (void *)0);
   ASSERT(kNoErr == err);
