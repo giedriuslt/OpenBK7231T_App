@@ -302,7 +302,7 @@ scriptFile_t *SVM_RegisterFile(const char *fname) {
 	// cast from byte* to char*
 	if (!strcmp(fname, "@startup")) {
 		bk_printf("before dup cfg\n");
-		char * cm_ = malloc(strlen(CFG_GetShortStartupCommand()+4);
+		char * cm_ = malloc(strlen(CFG_GetShortStartupCommand()+4));
 		strcpy(cm_, CFG_GetShortStartupCommand());
 		r->data = cm_;
 		bk_printf("after dup cfg\n");
