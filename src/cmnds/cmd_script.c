@@ -247,7 +247,7 @@ typedef struct scriptInstance_s {
 } scriptInstance_t;
 
 int g_scrBufferSize = 0;
-char *g_scrBuffer = 0;
+char *g_scrBuffer = NULL;
 int svm_deltaMS;
 scriptFile_t *g_scriptFiles = 0;
 scriptInstance_t *g_scriptThreads = 0;
@@ -422,13 +422,7 @@ void SVM_RunThread(scriptInstance_t *t, int maxLoops) {
 				if(len >= g_scrBufferSize) {
 					g_scrBufferSize = len + 256;
 					bk_printf("before realloc\n");
-					if(g_scrBuffer == 0) {
-						g_scrBuffer = malloc(g_scrBufferSize + 1);
-					}
-					else
-					{
 					g_scrBuffer = (char*)realloc(g_scrBuffer, g_scrBufferSize+1);
-					}
 				}
 				if (g_scrBuffer == NULL) {
 					return;
@@ -459,7 +453,7 @@ void SVM_RunThreads(int deltaMS) {
 	c_run = 0;
 	svm_deltaMS = deltaMS;
 
-	if(g_scrBuffer == 0) {
+	if(g_scrBuffer == NULL) {
 		g_scrBufferSize = 256;
 		g_scrBuffer = malloc(g_scrBufferSize + 1);
 	}
