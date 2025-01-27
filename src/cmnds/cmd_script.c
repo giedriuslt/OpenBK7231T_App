@@ -375,9 +375,11 @@ void SVM_RunThread(scriptInstance_t *t, int maxLoops) {
 	while(1) {
 		loop++;
 		// check if "waitFor" was executed last frame
+		bk_printf("before waitingforevent \n");
 		if (t->waitingForEvent) {
 			return;
 		}
+		bk_printf("before currline\n");
 		if(t->curLine == 0) {
 			t->curLine = 0;
 			t->curFile = 0;
@@ -386,38 +388,50 @@ void SVM_RunThread(scriptInstance_t *t, int maxLoops) {
 		if (loop > maxLoops) {
 			return;
 		}
+		bk_printf("before skipws\n");
 		t->curLine = SVM_SkipWS(t->curLine); 
+		bk_printf("before currline0\n");
 		if(t->curLine[0] == 0) {
 			t->curLine = 0;
 			t->curFile = 0;
 			return;
 		}
+		bk_printf("before comment\n");
 		if(t->curLine[0] == '/' && t->curLine[1] == '/') {
 			t->curLine = SVM_SkipLine(t->curLine); 
 			t->curLine = SVM_SkipWS(t->curLine); 
 		} else {
+			bk_printf("before start\n");
 			start = t->curLine;
+			bk_printf("before end\n");
 			end = SVM_SkipLine(start);
-			t->curLine = SVM_SkipWS(end); 
+			bk_printf("before skipws\n");
+			t->curLine = SVM_SkipWS(end);
+			bk_printf("after skipws\n");
 
 			while(end > start && (end[-1]==' '||end[-1]=='\r'||end[-1]=='\n'||end[-1]=='\t')) {
 				end--;
 			}
+			bk_printf("afer whle\n");
 			len = (end - start);
 			//ADDLOG_EXTRADEBUG(LOG_FEATURE_CMD, "Script len: %i",len);
 
 			// skip empty lines and skip labels
 			if(len > 0 && start[len-1] != ':') {
+				bk_printf("starting run currline\n");
 				if(len >= g_scrBufferSize) {
 					g_scrBufferSize = len + 256;
+					bk_printf("before realloc\n");
 					g_scrBuffer = (char*)realloc(g_scrBuffer, g_scrBufferSize+1);
 				}
 				if (g_scrBuffer == NULL) {
 					return;
 				}
+				bk_printf("before memcpy\n");
 				memcpy(g_scrBuffer,start,len);
 				g_scrBuffer[len] = 0;
 
+				bk_printf("setting p\n, %i", t->curFile == NULL);
 				p = start-t->curFile->data;
 				///ADDLOG_EXTRADEBUG(LOG_FEATURE_CMD, "[Loop %i] Script line: %s, char index %i",loop,g_scrBuffer,p);
 				bk_printf("executing cmd: %s \n", g_scrBuffer);
