@@ -422,7 +422,13 @@ void SVM_RunThread(scriptInstance_t *t, int maxLoops) {
 				if(len >= g_scrBufferSize) {
 					g_scrBufferSize = len + 256;
 					bk_printf("before realloc\n");
+					if(g_scrBuffer == 0) {
+						g_scrBuffer = malloc(g_scrBufferSize + 1);
+					}
+					else
+					{
 					g_scrBuffer = (char*)realloc(g_scrBuffer, g_scrBufferSize+1);
+					}
 				}
 				if (g_scrBuffer == NULL) {
 					return;
