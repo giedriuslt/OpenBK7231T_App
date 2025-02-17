@@ -115,7 +115,11 @@ static int get_tsen_adc(
 	
 	
 	//  Return the temperature
+	#ifdef CONF_ADC_ENABLE_TSEN
 	*temp = hosal_adc_tsen_value_get_f(hosal_adc_device_get());
+	#else
+	*temp=0;
+	#endif
 	return 0;
 }
 #endif
