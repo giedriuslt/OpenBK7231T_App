@@ -1,6 +1,9 @@
 #include "drv_bl_shared.h"
 #include "../obk_config.h"
 
+#include "oshal.h"
+#include "hal_efuse.h"
+
 #if ENABLE_BL_SHARED
 
 #include "../new_cfg.h"
@@ -337,6 +340,29 @@ commandResult_t BL09XX_ResetEnergyCounterEx(int asensdatasetix, float* pvalue)
       lastConsumptionSaveStamp = xTaskGetTickCount();
     }
     return CMD_RES_OK;
+}
+
+commandResult_t BL09XX_Readefuse(const void* context, const char* cmd, const char* args, int cmdFlags)
+{
+
+	unsigned int addr = 0;
+	unsigned int length = 100;
+	unsigned char value[100] = {0};
+	int ret,i = 0;
+
+
+	ret = hal_efuse_read(addr, (unsigned int *)value, length);
+	if(ret != 0)
+	{
+		addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER, "efuse_read error, ret = %d\n", ret);
+		return CMD_RES_ERROR;
+	}
+	
+	for(i=0;i<length;i++)
+	{
+		addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER,"data[%d] = %x\n",i,value[i]);
+	}
+	return CMD_RES_OK;
 }
 
 commandResult_t BL09XX_ResetEnergyCounter(const void* context, const char* cmd, const char* args, int cmdFlags)
@@ -1003,6 +1029,9 @@ void BL_Shared_Init(void) {
       //int HAL_SetEnergyMeterStatus(ENERGY_METERING_DATA *data);
     }
 
+	//BL09XX_Readefuse
+   CMD_RegisterCommand("ReadeFuse", BL09XX_Readefuse, NULL);
+	
 	//cmddetail:{"name":"EnergyCntReset","args":"[OptionalNewValue][sensorix]",
 	//cmddetail:"descr":"Resets the total Energy Counter, the one that is usually kept after device reboots. After this commands, the counter will start again from 0 (or from the value you specified). sensorix is used in ENABLE_BL_TWIN",
 	//cmddetail:"fn":"BL09XX_ResetEnergyCounter","file":"driver/drv_bl_shared.c","requires":"",
