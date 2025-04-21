@@ -103,7 +103,7 @@ jobs:
   build:
     name: Build
     needs: refs
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -149,7 +149,7 @@ jobs:
   build_idf:
     name: Build IDF
     needs: refs
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -195,7 +195,7 @@ jobs:
 
   merge:
     name: Merge Artifacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [refs, build, build2, build_idf]
     #if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
     steps:
@@ -207,7 +207,7 @@ jobs:
 
   release:
     name: Semantic Release Images and Artifacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [merge, refs]
     if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
     steps:
