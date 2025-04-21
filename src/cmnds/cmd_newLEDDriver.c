@@ -1370,7 +1370,7 @@ commandResult_t LED_SetBaseColor(const void *context, const char *cmd, const cha
 					tmp[1] = *(c++);
 					tmp[2] = '\0';
 					//r = sscanf(tmp, "%x", &val);
-					val = strtol(tmp, null, 16);
+					val = strtol(tmp, NULL, 16);
 					r = 1;
 					if (!r) {
 						ADDLOG_ERROR(LOG_FEATURE_CMD, "BASECOLOR no sscanf hex result from %s", tmp);
