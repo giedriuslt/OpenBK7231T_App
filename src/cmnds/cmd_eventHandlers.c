@@ -264,9 +264,12 @@ static bool EVENT_EvaluateCondition(int code, int argument, int next) {
 static bool EVENT_EvaluateChangeCondition(int code, int argument, int prev, int next) {
 	int prev_ch, next_ch;
 
+	ADDLOG_INFO(LOG_FEATURE_EVENT, "EVENT_EvaluateChangeCondition: %i %i %i %i", code, argument, prev, next);
 	prev_ch = EVENT_EvaluateCondition(code, argument, prev);
 	next_ch = EVENT_EvaluateCondition(code, argument, next);
 
+
+	ADDLOG_INFO(LOG_FEATURE_EVENT, "EVENT_EvaluateChangeCondition Result: %i %i",prev_ch, next_ch);
 	if(prev_ch == 0 && next_ch == 1) {
 		return 1;
 	}
@@ -304,6 +307,7 @@ void EventHandlers_ProcessVariableChange_Integer(byte eventCode, int oldValue, i
 
 	while(ev) {
 		if(eventCode==ev->eventCode) {
+			ADDLOG_INFO(LOG_FEATURE_EVENT, "EventHandlers_ProcessVariableChange_Integer: checking condition");
 			if(EVENT_EvaluateChangeCondition(ev->eventType, ev->requiredArgument, oldValue, newValue)) {
 				ADDLOG_INFO(LOG_FEATURE_EVENT, "EventHandlers_ProcessVariableChange_Integer: executing command %s",ev->command);
 				CMD_ExecuteCommand(ev->command, COMMAND_FLAG_SOURCE_SCRIPT);
