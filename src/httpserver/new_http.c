@@ -736,13 +736,13 @@ int HTTP_ProcessPacket(http_request_t* request) {
 			p++; // past space
 		}
 		else {
-			ADDLOGF_ERROR("invalid request\n");
+			ADDLOGF_ERROR("invalid request1 %s\n", urlStr);
 			return 0;
 		}
 	}
 	else {
 		// if p is 0, then strchr below would crash
-		ADDLOGF_ERROR("invalid request\n");
+		ADDLOGF_ERROR("invalid request2 %s\n", urlStr);
 		return 0;
 	}
 
@@ -758,7 +758,7 @@ int HTTP_ProcessPacket(http_request_t* request) {
 			p++; // past \n
 		}
 		else {
-			ADDLOGF_ERROR("invalid request\n");
+			ADDLOGF_ERROR("invalid3 request %s\n", protocol);
 			return 0;
 		}
 	}
