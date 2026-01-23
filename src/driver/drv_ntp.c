@@ -203,7 +203,7 @@ void NTP_SendRequest(bool bBlocking) {
 
 
     //create a UDP socket
-    if ((g_ntp_socket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP )) == -1)
+    if ((g_ntp_socket=socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP )) == -1)
     {
         g_ntp_socket = 0;
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: failed to create socket");
@@ -223,7 +223,17 @@ void NTP_SendRequest(bool bBlocking) {
     g_address.sin_addr.s_addr = inet_addr(adrString);
     g_address.sin_port = htons(123);
 
-
+    // https://github.com/tuya/tuya-iotos-embeded-sdk-wifi-ble-bk7231t/blob/5e28e1f9a1a9d88425f3fd4b658e895a8ee7b83b/platforms/bk7231t/tuya_os_adapter/src/system/tuya_hal_network.c
+    //
+    if(bBlocking == false) {
+#if WINDOWS
+#else
+        if(fcntl(g_ntp_socket, F_SETFL, O_NONBLOCK)) {
+            addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: failed to make socket non-blocking!");
+        }
+#endif
+    }
+	
     // Send the message to server:
     if(sendto(g_ntp_socket, &packet, sizeof(packet), 0,
          (struct sockaddr*)&g_address, adrLen) < 0) {
@@ -234,17 +244,6 @@ void NTP_SendRequest(bool bBlocking) {
 			g_ntp_delay = 0;
 		}
         return;
-    }
-
-    // https://github.com/tuya/tuya-iotos-embeded-sdk-wifi-ble-bk7231t/blob/5e28e1f9a1a9d88425f3fd4b658e895a8ee7b83b/platforms/bk7231t/tuya_os_adapter/src/system/tuya_hal_network.c
-    //
-    if(bBlocking == false) {
-#if WINDOWS
-#else
-        if(fcntl(g_ntp_socket, F_SETFL, O_NONBLOCK)) {
-            addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: failed to make socket non-blocking!");
-        }
-#endif
     }
 
     // can attempt in next 10 seconds
