@@ -203,7 +203,7 @@ void NTP_SendRequest(bool bBlocking) {
 
 
     //create a UDP socket
-    if ((g_ntp_socket=socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP )) == -1)
+    if ((g_ntp_socket=socket(AF_INET, SOCK_DGRAM IPPROTO_UDP )) == -1)
     {
         g_ntp_socket = 0;
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: failed to create socket");
