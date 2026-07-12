@@ -172,7 +172,18 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 		FD_ZERO(&readfds);
 		FD_SET(tcp_listen_fd, &readfds);
 
-		select(tcp_listen_fd + 1, &readfds, NULL, NULL, NULL);
+// Add a 1-second timeout to select instead of NULL (infinite)
+        struct timeval select_timeout;
+        select_timeout.tv_sec = 1;
+        select_timeout.tv_usec = 0;
+
+        int select_ret = select(tcp_listen_fd + 1, &readfds, NULL, NULL, &select_timeout);
+		
+		// Case 1: Select failed or timed out
+        if (select_ret <= 0) {
+            rtos_delay_milliseconds(100); // Yield to let IDLE clean up
+            continue;
+        }
 
 		if (FD_ISSET(tcp_listen_fd, &readfds))
 		{
@@ -237,6 +248,7 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 					ADDLOG_DEBUG(LOG_FEATURE_HTTP, "TCP Client %s:%d thread creation failed! fd: %d", client_ip_str, client_addr.sin_port, client_fd);
 					lwip_close(client_fd);
 					client_fd = -1;
+					rtos_delay_milliseconds(200);
 				}
 #endif
 			}
@@ -244,8 +256,10 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 				// If accept fails due to OOM/Descriptor limits, do NOT spin instantly.
 				rtos_delay_milliseconds(100);
 			}
-		}
-		rtos_delay_milliseconds(20);
+		}else {
+            // Select returned data, but it wasn't a clean read event (Socket Error state)
+            rtos_delay_milliseconds(100);
+        }
 	}
 
 	if (err != kNoErr)
