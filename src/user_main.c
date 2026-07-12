@@ -680,6 +680,23 @@ void Main_ScheduleHomeAssistantDiscovery(int seconds) {
 }
 #endif
 
+void LogSystemThreadsDiagnostic(void) {
+    // Allocate a buffer large enough to hold the ASCII table output
+    // Note: This requires about 40 bytes per task. 1024 bytes is usually plenty.
+    char *pcWriteBuffer = (char *)os_malloc(1024);
+    
+    if (pcWriteBuffer != NULL) {
+        // vTaskList populates the buffer with human-readable thread diagnostics
+        vTaskList(pcWriteBuffer);
+        
+        // Print it to your logs
+        ADDLOG_INFO(LOG_FEATURE_HTTP, "\r\nTask Name\tState\tPrio\tStack\tNum\r\n%s", pcWriteBuffer);
+        
+        os_free(pcWriteBuffer);
+    } else {
+        ADDLOG_ERROR(LOG_FEATURE_HTTP, "Diagnostics failed: Out of memory to allocate trace buffer!");
+    }
+}
 
 void Main_ConnectToWiFiNow() {
 	const char* wifi_ssid, * wifi_pass;
@@ -945,6 +962,11 @@ void Main_OnEverySecond()
 			safe, g_secondsElapsed, idleCount, xPortGetFreeHeapSize(),g_bHasWiFiConnected, g_timeSinceLastPingReply, LWIP_GetActiveSockets(), LWIP_GetMaxSockets(),
 			g_powersave ? "POWERSAVE" : "");
 #endif
+		if (idleCount<10)
+		{
+			LogSystemThreadsDiagnostic();
+		}
+		
 		// reset so it's a per-second counter.
 		idleCount = 0;
 	}
