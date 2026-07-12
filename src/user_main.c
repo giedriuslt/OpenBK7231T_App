@@ -748,8 +748,13 @@ float g_wifi_temperature = 0;
 #endif
 
 static byte g_secondsSpentInLowMemoryWarning = 0;
+
+static portTickType startTick;
+static portTickType ticksElapsed;
+
 void Main_OnEverySecond()
 {
+	startTick = xTaskGetTickCount();
 #if PLATFORM_W600 || PLATFORM_W800
 #define TimeOut_t xTimeOutType 
 #endif
@@ -952,8 +957,8 @@ void Main_OnEverySecond()
 		//MQTT_GetStats(&mqtt_cur, &mqtt_max, &mqtt_mem);
 		//ADDLOGF_INFO("mqtt req %i/%i, free mem %i", mqtt_cur,mqtt_max,mqtt_mem);
 #if ENABLE_MQTT
-		ADDLOGF_INFO("%sTime %i, idle %i/s, free %d, MQTT %i(%i), bWifi %i, secondsWithNoPing %i, socks %i/%i %s",
-			safe, g_secondsElapsed, idleCount, xPortGetFreeHeapSize(), bMQTTconnected,
+		ADDLOGF_INFO("%sTime %i, idle %i/s , took %lu, free %d, MQTT %i(%i), bWifi %i, secondsWithNoPing %i, socks %i/%i %s",
+			safe, g_secondsElapsed, idleCount, ticksElapsed, xPortGetFreeHeapSize(), bMQTTconnected,
 			MQTT_GetConnectEvents(),g_bHasWiFiConnected, g_timeSinceLastPingReply, LWIP_GetActiveSockets(), LWIP_GetMaxSockets(),
 			g_powersave ? "POWERSAVE" : "");
 #else
@@ -1117,6 +1122,8 @@ void Main_OnEverySecond()
 	}
 #endif
 	HAL_Run_WDT();
+	
+	ticksElapsed = (xTaskGetTickCount() - startTick);
 	// force it to sleep...  we MUST have some idle task processing
 	// else task memory doesn't get freed
 	rtos_delay_milliseconds(1);
