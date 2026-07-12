@@ -758,15 +758,15 @@ void startLogServer() {
 #else
 	OSStatus err = kNoErr;
 
-	// err = rtos_create_thread(NULL, BEKEN_APPLICATION_PRIORITY,
-		// "Log_server",
-		// (beken_thread_function_t)log_server_thread,
-		// 0x800,
-		// (beken_thread_arg_t)0);
-	// if (err != kNoErr)
-	// {
-		// bk_printf("startLogServer: create \"TCP_server\" thread failed!\r\n");
-	// }
+	err = rtos_create_thread(NULL, BEKEN_APPLICATION_PRIORITY,
+		"Log_server",
+		(beken_thread_function_t)log_server_thread,
+		0x800,
+		(beken_thread_arg_t)0);
+	if (err != kNoErr)
+	{
+		bk_printf("startLogServer: create \"TCP_server\" thread failed!\r\n");
+	}
 #endif
 }
 
@@ -776,20 +776,20 @@ void startSerialLog() {
 #else
 
 #ifndef PLATFORM_BEKEN
-	// OSStatus err = kNoErr;
-	// err = rtos_create_thread(NULL, BEKEN_APPLICATION_PRIORITY,
-		// "log_serial",
-		// (beken_thread_function_t)log_serial_thread,
-// #if PLATFORM_BL_NEW
-		// 0x1000,
-// #else
-		// 0x800,
-// #endif
-		// (beken_thread_arg_t)0);
-	// if (err != kNoErr)
-	// {
-		// bk_printf("create \"log_serial\" thread failed!\r\n");
-	// }
+	OSStatus err = kNoErr;
+	err = rtos_create_thread(NULL, BEKEN_APPLICATION_PRIORITY,
+		"log_serial",
+		(beken_thread_function_t)log_serial_thread,
+#if PLATFORM_BL_NEW
+		0x1000,
+#else
+		0x800,
+#endif
+		(beken_thread_arg_t)0);
+	if (err != kNoErr)
+	{
+		bk_printf("create \"log_serial\" thread failed!\r\n");
+	}
 #endif
 
 #endif
