@@ -240,6 +240,10 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 				}
 #endif
 			}
+			else {
+				// If accept fails due to OOM/Descriptor limits, do NOT spin instantly.
+				rtos_delay_milliseconds(100);
+			}
 		}
 	}
 
