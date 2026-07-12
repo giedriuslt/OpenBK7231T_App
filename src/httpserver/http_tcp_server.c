@@ -3,6 +3,7 @@
 #include "lwip/sockets.h"
 #include "lwip/ip_addr.h"
 #include "lwip/inet.h"
+#include <time.h>
 #include "../logging/logging.h"
 #include "new_http.h"
 
@@ -178,6 +179,20 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 			client_fd = accept(tcp_listen_fd, (struct sockaddr*)&client_addr, &sockaddr_t_size);
 			if (client_fd >= 0)
 			{
+				// Define a 5-second timeout structure
+				struct timeval timeout;
+				timeout.tv_sec = 5;       // 5 seconds
+				timeout.tv_usec = 0;      // 0 microseconds
+
+				// Set Receive Timeout
+				if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+					ADDLOG_ERROR(LOG_FEATURE_HTTP, "Failed to set SO_RCVTIMEO on fd %d", client_fd);
+				}
+
+				// Set Send Timeout (Highly recommended so a stalled client can't block send() indefinitely)
+				if (setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
+					ADDLOG_ERROR(LOG_FEATURE_HTTP, "Failed to set SO_SNDTIMEO on fd %d", client_fd);
+				}
 #if PLATFORM_XR809
 #if DISABLE_SEPARATE_THREAD_FOR_EACH_TCP_CLIENT
 
