@@ -245,6 +245,7 @@ static void tcp_server_thread(beken_thread_arg_t arg)
 				rtos_delay_milliseconds(100);
 			}
 		}
+		rtos_delay_milliseconds(20);
 	}
 
 	if (err != kNoErr)
