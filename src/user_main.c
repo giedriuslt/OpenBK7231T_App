@@ -750,11 +750,15 @@ float g_wifi_temperature = 0;
 static byte g_secondsSpentInLowMemoryWarning = 0;
 
 static portTickType startTick;
+static portTickType startTickbefore;
 static portTickType ticksElapsed;
+static portTickType ticksbetween;
 
 void Main_OnEverySecond()
 {
 	startTick = xTaskGetTickCount();
+	ticksbetween = startTick - startTickbefore;
+	startTickbefore = startTick;
 #if PLATFORM_W600 || PLATFORM_W800
 #define TimeOut_t xTimeOutType 
 #endif
@@ -957,8 +961,8 @@ void Main_OnEverySecond()
 		//MQTT_GetStats(&mqtt_cur, &mqtt_max, &mqtt_mem);
 		//ADDLOGF_INFO("mqtt req %i/%i, free mem %i", mqtt_cur,mqtt_max,mqtt_mem);
 #if ENABLE_MQTT
-		ADDLOGF_INFO("%sTime %i, idle %i/s , took %lu, free %d, MQTT %i(%i), bWifi %i, secondsWithNoPing %i, socks %i/%i %s",
-			safe, g_secondsElapsed, idleCount, ticksElapsed, xPortGetFreeHeapSize(), bMQTTconnected,
+		ADDLOGF_INFO("%sTime %i, idle %i/s , took %lu, delay %lu, free %d, MQTT %i(%i), Wifi %i, snp %i, socks %i/%i %s",
+			safe, g_secondsElapsed, idleCount, ticksElapsed, ticksbetween, xPortGetFreeHeapSize(), bMQTTconnected,
 			MQTT_GetConnectEvents(),g_bHasWiFiConnected, g_timeSinceLastPingReply, LWIP_GetActiveSockets(), LWIP_GetMaxSockets(),
 			g_powersave ? "POWERSAVE" : "");
 #else
