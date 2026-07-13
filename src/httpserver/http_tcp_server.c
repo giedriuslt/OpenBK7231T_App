@@ -30,6 +30,7 @@ static void tcp_client_thread(beken_thread_arg_t arg);
 
 
 xTaskHandle g_http_thread = NULL;
+xTaskHandle g_ping_thread = NULL;
 
 void HTTPServer_Stop()
 {
@@ -147,6 +148,17 @@ exit:
 #endif
 }
 
+
+static void ping_server_thread(beken_thread_arg_t arg)
+{
+	while(1)
+	{
+		rtos_delay_milliseconds(1000);
+		ADDLOG_ERROR(LOG_FEATURE_HTTP, "Ping thread still scheduled...");
+	}
+	rtos_delete_thread(NULL);
+	
+}
 /* TCP server listener thread */
 static void tcp_server_thread(beken_thread_arg_t arg)
 {
@@ -277,6 +289,12 @@ void HTTPServer_Start()
 {
 	OSStatus err = kNoErr;
 	uint32_t stackSize = 0x800;
+	
+			err = rtos_create_thread(&g_ping_thread, 4,
+			"PING_SRV",
+			(beken_thread_function_t)ping_server_thread,
+			stackSize,
+			(beken_thread_arg_t)0);
 
 	while (stackSize >= 0x100)
 	{
