@@ -943,7 +943,7 @@ static void log_serial_thread(beken_thread_arg_t arg)
 				bk_printf("%s", seriallogbuf);
 			}
 		}
-		rtos_delay_milliseconds(200);
+		rtos_delay_milliseconds(10);
 	}
 }
 #endif
