@@ -515,6 +515,8 @@ OpenBL602: prebuild_OpenBL602 sdk/OpenBL602/customer_app/bl602_sharedApp/bl602_s
 	$(MAKE) -C sdk/OpenBL602/customer_app/bl602_sharedApp USER_SW_VER=$(APP_VERSION) OBK_VARIANT=$(OBK_VARIANT) CONFIG_CHIP_NAME=BL602 bins
 	mkdir -p output/$(APP_VERSION)
 	cp sdk/OpenBL602/customer_app/bl602_sharedApp/build_out/bl602_sharedApp.bin output/$(APP_VERSION)/OpenBL602_$(APP_VERSION).bin
+	cp sdk/OpenBL602/customer_app/bl602_sharedApp/build_out/bl602_sharedApp.map output/$(APP_VERSION)/OpenBL602_$(APP_VERSION).map
+	cp sdk/OpenBL602/customer_app/bl602_sharedApp/build_out/bl602_sharedApp.elf output/$(APP_VERSION)/OpenBL602_$(APP_VERSION).elf
 	cp sdk/OpenBL602/customer_app/bl602_sharedApp/build_out/ota/dts40M_pt2M_boot2release_ef4015/FW_OTA.bin output/$(APP_VERSION)/OpenBL602_$(APP_VERSION)_OTA.bin
 	cp sdk/OpenBL602/customer_app/bl602_sharedApp/build_out/ota/dts40M_pt2M_boot2release_ef4015/FW_OTA.bin.xz output/$(APP_VERSION)/OpenBL602_$(APP_VERSION)_OTA.bin.xz
 	cp sdk/OpenBL602/customer_app/bl602_sharedApp/build_out/ota/dts40M_pt2M_boot2release_ef4015/FW_OTA.bin.xz.ota output/$(APP_VERSION)/OpenBL602_$(APP_VERSION)_OTA.bin.xz.ota
