@@ -113,6 +113,9 @@ static commandResult_t CMD_TS_Print(const void *context, const char *cmd, const 
 }
 void TS_Init() {
 	g_buffer = malloc(g_maxScrollingText);
+	if (g_buffer == 0) {
+		return;
+	}
 	TS_SetText("THIS IS A SCROLLING TEXT 123456789");
 
 	//cmddetail:{"name":"TS_Clear","args":"",

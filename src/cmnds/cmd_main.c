@@ -808,7 +808,16 @@ commandResult_t CMD_CreateAliasHelper(const char *alias, const char *ocmd) {
 	}
 
 	cmdMem = strdup(ocmd);
+	if (cmdMem == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_Alias: strdup failed");
+		return CMD_RES_ERROR;
+	}
 	aliasMem = strdup(alias);
+	if (aliasMem == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_Alias: strdup failed");
+		free(cmdMem);
+		return CMD_RES_ERROR;
+	}
 
 	ADDLOG_INFO(LOG_FEATURE_CMD, "New alias has been set: %s runs %s", alias, ocmd);
 
@@ -1281,6 +1290,10 @@ command_t *CMD_RegisterCommand(const char* name, commandHandler_t handler, void*
 
 	hash = generateHashValue(name);
 	newCmd = (command_t*)malloc(sizeof(command_t));
+	if (newCmd == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_RegisterCommand: malloc failed for %s", name);
+		return 0;
+	}
 	newCmd->commandFlags = 0;
 	newCmd->handler = handler;
 	newCmd->name = name;

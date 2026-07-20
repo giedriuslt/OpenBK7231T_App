@@ -277,7 +277,16 @@ void softspi_flash_erase_sector(softSPI_t* spi, int addr) {
 void flash_test_pages(softSPI_t* spi, int baseAddr, int length, byte pattern) {
 	int i, err = 0;
 	byte *writeBuf = malloc(length);
+	if (writeBuf == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "flash_test_pages: writeBuf malloc failed");
+		return;
+	}
 	byte *readBuf = malloc(length);
+	if (readBuf == 0) {
+		free(writeBuf);
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "flash_test_pages: readBuf malloc failed");
+		return;
+	}
 
 	for (i = 0; i < length; i++)
 		writeBuf[i] = pattern;
@@ -367,6 +376,10 @@ void spi_test_read_and_print(int adr, int cnt) {
 	int i;
 
 	data = malloc(cnt);
+	if (data == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "spi_test_read_and_print: malloc failed");
+		return;
+	}
 
 	LFS_SPI_Flash_Read(adr, cnt, data);
 

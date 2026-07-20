@@ -85,6 +85,12 @@ void DGR_AddToSendQueue(byte *data, int len) {
 		}
 		dgr_total_alloced_queue_size++;
 		p = malloc(sizeof(dgrPacket_t));
+		if (p == 0) {
+			dgr_total_alloced_queue_size--;
+			addLogAdv(LOG_INFO, LOG_FEATURE_DGR, "DGR_AddToSendQueue: malloc failed");
+			xSemaphoreGive(g_mutex);
+			return;
+		}
 		p->next = dgr_pending;
 		dgr_pending = p;
 	}

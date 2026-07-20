@@ -215,10 +215,10 @@ int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
         timeout.tv_sec = t_left / 1000;
         timeout.tv_usec = (t_left % 1000) * 1000;
 
-        ret = select(fd + 1, &sets, NULL, NULL, NULL);
-        if ( FD_ISSET( fd, &sets ) )
-        {
-            if (ret > 0) {
+        ret = select(fd + 1, &sets, NULL, NULL, &timeout);
+        if (ret > 0) {
+            if ( FD_ISSET( fd, &sets ) )
+            {
                 ret = recv(fd, buf, len, 0);
                 if (ret > 0) {
                     if(ret < len)
@@ -244,20 +244,19 @@ int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
                     err_code = -2;
                     break;
                 }
-            } else if (0 == ret) {
-                break;
-            } else {
-                if (EINTR == errno) {
-                ADDLOG_ERROR(LOG_FEATURE_HTTP_CLIENT,"EINTR be caught-------");
-                //continue;
-                }
-                ADDLOG_ERROR(LOG_FEATURE_HTTP_CLIENT,"select-recv fail");
-                err_code = -2;
-                break;
             }
        }
-       else
-       {
+       else if (0 == ret) {
+            break;
+       }
+       else {
+            if (EINTR == errno) {
+            ADDLOG_ERROR(LOG_FEATURE_HTTP_CLIENT,"EINTR be caught-------");
+            //continue;
+            }
+            ADDLOG_ERROR(LOG_FEATURE_HTTP_CLIENT,"select-recv fail");
+            err_code = -2;
+            break;
        }
     }while(/*(bk_http_ptr->do_data == 1 && len_recv < bk_http_ptr->http_total) || */((len_recv < len) && (0 == data_over)));
 #endif

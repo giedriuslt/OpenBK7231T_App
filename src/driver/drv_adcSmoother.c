@@ -25,7 +25,12 @@ static int g_channel_smoothed = 0;
 static int g_channel_lh = 0;
 
 void ADCSmoother_SetupWindow(int size) {
-	g_samples = realloc(g_samples, sizeof(int) * size);
+	int *tmp = realloc(g_samples, sizeof(int) * size);
+	if (tmp == 0) {
+		// keep the existing window intact on failure
+		return;
+	}
+	g_samples = tmp;
 	memset(g_samples,0, sizeof(int) * size);
 	g_samplesCount = size;
 }

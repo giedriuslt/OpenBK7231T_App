@@ -463,6 +463,9 @@ void DRV_I2C_AddDevice_PCF8574_Internal(int busType, int address, byte lcd_cols,
 	i2cDevice_PCF8574_t *dev;
 
 	dev = malloc(sizeof(i2cDevice_PCF8574_t));
+	if (dev == 0) {
+		return;
+	}
 
 	dev->base.addr = address;
 	dev->base.busType = busType;

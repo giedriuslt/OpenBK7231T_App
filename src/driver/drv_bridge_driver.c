@@ -76,6 +76,11 @@ void Bridge_driver_Init()
             os_free(br_ctrl);
         /* Allocate memeory */
         br_ctrl = (BRIDGE_CONTROL *)os_malloc(sizeof(BRIDGE_CONTROL)*ch_count);
+        if (br_ctrl == NULL)
+        {
+            addLogAdv(LOG_ERROR, LOG_FEATURE_DRV, "Bridge Driver br_ctrl malloc failed");
+            return;
+        }
         /* Reset settings */
         for(ch=0;ch<ch_count;ch++)
         {

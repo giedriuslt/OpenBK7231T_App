@@ -188,6 +188,10 @@ static int be_ms_subscribe(bvm *vm) {
     be_return_nil(vm);
   }
   sub->topicFilter = strdup(filter);
+  if (!sub->topicFilter) {
+    free(sub);
+    be_return_nil(vm);
+  }
   sub->closureId = closureId;
   sub->next = g_berrySubs;
   g_berrySubs = sub;

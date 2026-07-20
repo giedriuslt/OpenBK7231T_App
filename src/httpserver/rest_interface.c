@@ -441,6 +441,13 @@ static int http_rest_run_lfs_file(http_request_t* request) {
 	const char* q = strchr(base, '?');
 	size_t len = q ? (size_t)(q - base) : strlen(base);
 	fpath = os_malloc(len + 1);
+	if (!fpath) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate fpath");
+		request->responseCode = HTTP_RESPONSE_NOT_FOUND;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	memcpy(fpath, base, len);
 	fpath[len] = '\0';
 	int ran = http_runBerryFile(request, fpath);
@@ -476,9 +483,33 @@ static int http_rest_get_lfs_file(http_request_t* request) {
 	}
 
 	fpath = os_malloc(strlen(request->url) - strlen("api/lfs/") + 1);
+	if (!fpath) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate fpath");
+		request->responseCode = HTTP_RESPONSE_NOT_FOUND;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 
 	buff = os_malloc(1024);
+	if (!buff) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate buff");
+		os_free(fpath);
+		request->responseCode = HTTP_RESPONSE_NOT_FOUND;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	file = os_malloc(sizeof(lfs_file_t));
+	if (!file) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate file");
+		os_free(fpath);
+		os_free(buff);
+		request->responseCode = HTTP_RESPONSE_NOT_FOUND;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	memset(file, 0, sizeof(lfs_file_t));
 
 	strcpy(fpath, request->url + strlen("api/lfs/"));
@@ -498,6 +529,14 @@ static int http_rest_get_lfs_file(http_request_t* request) {
 		lfs_dir_t* dir;
 		ADDLOG_DEBUG(LOG_FEATURE_API, "%s is a folder", fpath);
 		dir = os_malloc(sizeof(lfs_dir_t));
+		if (!dir) {
+			ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate dir");
+			poststr(request, NULL);
+			os_free(fpath);
+			os_free(file);
+			os_free(buff);
+			return 0;
+		}
 		memset(dir, 0, sizeof(*dir));
 		// if the thing is a folder.
 		lfsres = lfs_dir_open(&lfs, dir, fpath);
@@ -638,6 +677,10 @@ bool HTTP_checkLFSOverride(http_request_t* request, const char *ext) {
 	}
 	lfs_file_t* file;
 	file = os_malloc(sizeof(lfs_file_t));
+	if (!file) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate file");
+		return 0;
+	}
 	memset(file,0, sizeof(lfs_file_t));
 	int lfsres = lfs_file_open(&lfs, file, tmp, LFS_O_RDONLY);
 	if (lfsres == 0) {
@@ -672,6 +715,14 @@ static int http_rest_get_lfs_delete(http_request_t* request) {
 	}
 
 	fpath = os_malloc(strlen(request->url) - strlen("api/del/") + 1);
+	if (!fpath) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate fpath");
+		request->responseCode = HTTP_RESPONSE_NOT_FOUND;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, "Not found");
+		poststr(request, NULL);
+		return 0;
+	}
 
 	strcpy(fpath, request->url + strlen("api/del/"));
 
@@ -715,7 +766,22 @@ static int http_rest_post_lfs_file(http_request_t* request) {
 	}
 
 	fpath = os_malloc(strlen(request->url) - strlen("api/lfs/") + 1);
+	if (!fpath) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate fpath");
+		request->responseCode = HTTP_RESPONSE_SERVER_ERROR;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	file = os_malloc(sizeof(lfs_file_t));
+	if (!file) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate file");
+		os_free(fpath);
+		request->responseCode = HTTP_RESPONSE_SERVER_ERROR;
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	memset(file, 0, sizeof(lfs_file_t));
 
 	strcpy(fpath, request->url + strlen("api/lfs/"));
@@ -725,6 +791,15 @@ static int http_rest_post_lfs_file(http_request_t* request) {
 	if (folder) {
 		int folderlen = folder - fpath;
 		folder = os_malloc(folderlen + 1);
+		if (!folder) {
+			ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate folder");
+			os_free(file);
+			os_free(fpath);
+			request->responseCode = HTTP_RESPONSE_SERVER_ERROR;
+			http_setup(request, httpMimeTypeText);
+			poststr(request, NULL);
+			return 0;
+		}
 		strncpy(folder, fpath, folderlen);
 		folder[folderlen] = 0;
 		ADDLOG_DEBUG(LOG_FEATURE_API, "file is in folder %s try to create", folder);
@@ -787,7 +862,7 @@ static int http_rest_post_lfs_file(http_request_t* request) {
 					ADDLOG_DEBUG(LOG_FEATURE_API, "recv returned %d - end of data - remaining %d", writelen, towrite);
 				}
 			}
-		} while ((towrite > 0) && (writelen >= 0));
+		} while ((towrite > 0) && (writelen > 0));
 
 		// no more data
 		lfs_file_truncate(&lfs, file, total);
@@ -977,9 +1052,22 @@ static int http_rest_post_logconfig(http_request_t* request) {
 	//https://github.com/zserge/jsmn/blob/master/example/simple.c
 	//jsmn_parser p;
 	jsmn_parser* p = os_malloc(sizeof(jsmn_parser));
+	if (!p) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate parser");
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	//jsmntok_t t[128]; /* We expect no more than 128 tokens */
 #define TOKEN_COUNT 128
 	jsmntok_t* t = os_malloc(sizeof(jsmntok_t) * TOKEN_COUNT);
+	if (!t) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate tokens");
+		os_free(p);
+		http_setup(request, httpMimeTypeText);
+		poststr(request, NULL);
+		return 0;
+	}
 	char* json_str = request->bodystart;
 	int json_len = strlen(json_str);
 
@@ -1101,9 +1189,18 @@ static int http_rest_post_pins(http_request_t* request) {
 	//https://github.com/zserge/jsmn/blob/master/example/simple.c
 	//jsmn_parser p;
 	jsmn_parser* p = os_malloc(sizeof(jsmn_parser));
+	if (!p) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate parser");
+		return http_rest_error(request, 400, "Out of memory");
+	}
 	//jsmntok_t t[128]; /* We expect no more than 128 tokens */
 #define TOKEN_COUNT 128
 	jsmntok_t* t = os_malloc(sizeof(jsmntok_t) * TOKEN_COUNT);
+	if (!t) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate tokens");
+		os_free(p);
+		return http_rest_error(request, 400, "Out of memory");
+	}
 	char* json_str = request->bodystart;
 	int json_len = strlen(json_str);
 
@@ -1222,9 +1319,18 @@ static int http_rest_post_channelTypes(http_request_t* request) {
 	//https://github.com/zserge/jsmn/blob/master/example/simple.c
 	//jsmn_parser p;
 	jsmn_parser* p = os_malloc(sizeof(jsmn_parser));
+	if (!p) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate parser");
+		return http_rest_error(request, 400, "Out of memory");
+	}
 	//jsmntok_t t[128]; /* We expect no more than 128 tokens */
 #define TOKEN_COUNT 128
 	jsmntok_t* t = os_malloc(sizeof(jsmntok_t) * TOKEN_COUNT);
+	if (!t) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate tokens");
+		os_free(p);
+		return http_rest_error(request, 400, "Out of memory");
+	}
 	char* json_str = request->bodystart;
 	int json_len = strlen(json_str);
 
@@ -1346,6 +1452,10 @@ static int http_rest_get_flash(http_request_t* request, int startaddr, int len) 
 
 	int bufferSize = 1024;
 	buffer = os_malloc(bufferSize);
+	if (!buffer) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate buffer");
+		return http_rest_error(request, -1, "Out of memory");
+	}
 	memset(buffer, 0, bufferSize);
 
 	http_setup(request, httpMimeTypeBinary);
@@ -1400,9 +1510,18 @@ static int http_rest_post_channels(http_request_t* request) {
 	//https://github.com/zserge/jsmn/blob/master/example/simple.c
 	//jsmn_parser p;
 	jsmn_parser* p = os_malloc(sizeof(jsmn_parser));
+	if (!p) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate parser");
+		return http_rest_error(request, 400, "Out of memory");
+	}
 	//jsmntok_t t[128]; /* We expect no more than 128 tokens */
 #define TOKEN_COUNT 128
 	jsmntok_t* t = os_malloc(sizeof(jsmntok_t) * TOKEN_COUNT);
+	if (!t) {
+		ADDLOG_ERROR(LOG_FEATURE_API, "Failed to allocate tokens");
+		os_free(p);
+		return http_rest_error(request, 400, "Out of memory");
+	}
 	char* json_str = request->bodystart;
 	int json_len = strlen(json_str);
 

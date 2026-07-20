@@ -1990,6 +1990,10 @@ HassDeviceInfo *hass_createEnumChannelInfo(int i) {
 	}
 
 	char **options = (char**)malloc(en->numOptions * sizeof(char *));
+	if (!options) {
+		addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP, "Failed to allocate enum options");
+		return NULL;
+	}
 	for (int o = 0; o < en->numOptions; o++) {
 		options[o] = en->options[o].label;
 	}

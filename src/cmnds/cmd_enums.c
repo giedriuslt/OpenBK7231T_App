@@ -98,6 +98,10 @@ commandResult_t CMD_SetChannelEnum(const void *context, const char *cmd,
 
 	if (g_enums == 0) {
 		g_enums = malloc(sizeof(channelEnum_t*)*CHANNEL_MAX);
+		if (g_enums == 0) {
+			ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_SetChannelEnum: malloc failed");
+			return CMD_RES_ERROR;
+		}
 		memset(g_enums,0, sizeof(channelEnum_t*)*CHANNEL_MAX);
 	}
 
@@ -106,10 +110,20 @@ commandResult_t CMD_SetChannelEnum(const void *context, const char *cmd,
 		CMD_FreeChannelEnumOptions(ch);
 	}
 	en = malloc(sizeof(channelEnum_t));
+	if (en == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_SetChannelEnum: malloc failed");
+		return CMD_RES_ERROR;
+	}
 	g_enums[ch] = en;
 
 	en->numOptions = Tokenizer_GetArgsCount()-1;
 	en->options = malloc(sizeof(channelEnumOption_t)*en->numOptions);
+	if (en->options == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_SetChannelEnum: malloc failed");
+		os_free(en);
+		g_enums[ch] = 0;
+		return CMD_RES_ERROR;
+	}
 	for (int i = 0; i < en->numOptions; i++) {
 		s = Tokenizer_GetArg(1+i);
 		en->options[i].value = atoi(s);
@@ -124,6 +138,16 @@ commandResult_t CMD_SetChannelEnum(const void *context, const char *cmd,
 		//en->options[i].label = strdup(s);
 		int llen = strlen(s) > CMD_ENUM_MAX_LABEL_SIZE ? CMD_ENUM_MAX_LABEL_SIZE : strlen(s);
 		label = (char *)malloc(llen+1);
+		if (label == 0) {
+			ADDLOG_ERROR(LOG_FEATURE_CMD, "CMD_SetChannelEnum: malloc failed");
+			for (int j = 0; j < i; j++) {
+				os_free(en->options[j].label);
+			}
+			os_free(en->options);
+			os_free(en);
+			g_enums[ch] = 0;
+			return CMD_RES_ERROR;
+		}
 		strncpy(label,s,llen);
 		label[llen]='\0';
 		en->options[i].label = label;

@@ -102,7 +102,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				goto update_ota_exit;
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 
 
 	mbedtls_md_init(&ctx);

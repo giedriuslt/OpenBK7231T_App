@@ -97,17 +97,30 @@ void SPILED_InitDMA(int numBytes) {
 	uint32_t buffer_size = spiLED.ofs + (numBytes * 4) + spiLED.padding; //Add `spiLED.ofs` bytes for "Reset"
 #if PLATFORM_ESPIDF
 	spiLED.buf = heap_caps_malloc(sizeof(byte) * (buffer_size), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+	if (spiLED.buf == 0) {
+		return;
+	}
 #elif PLATFORM_REALTEK
 	// memory for dma must be aligned to 32 bytes
 	orig_ptr = (byte*)os_malloc((sizeof(byte) * (buffer_size)) + 32 - 1);
+	if (orig_ptr == 0) {
+		spiLED.buf = 0;
+		return;
+	}
 	uint32_t misalignment = (uint32_t)orig_ptr % 32;
 	spiLED.buf = (orig_ptr + 32 - misalignment);
 #elif PLATFORM_XRADIO
 	spiLED.buf = (byte*)os_malloc(sizeof(byte) * (buffer_size) + 8);
+	if (spiLED.buf == 0) {
+		return;
+	}
 	memset(spiLED.buf, 0, 8);
 	spiLED.buf += 8;
 #else
 	spiLED.buf = (byte *)os_malloc(sizeof(byte) * (buffer_size)); //18LEDs x RGB x 4Bytes
+	if (spiLED.buf == 0) {
+		return;
+	}
 #endif
 
 	// Fill `spiLED.ofs` slice of the buffer with zero
@@ -124,6 +137,19 @@ void SPILED_InitDMA(int numBytes) {
 	}
 
 	spiLED.msg = os_malloc(sizeof(struct spi_message));
+	if (spiLED.msg == 0) {
+		// free the buffer we just allocated, matching the platform free in SPILED_Shutdown
+#if PLATFORM_REALTEK
+		os_free(orig_ptr);
+		orig_ptr = NULL;
+#elif PLATFORM_XRADIO
+		os_free(spiLED.buf - 8);
+#else
+		os_free(spiLED.buf);
+#endif
+		spiLED.buf = 0;
+		return;
+	}
 	spiLED.msg->send_buf = spiLED.buf;
 	spiLED.msg->send_len = buffer_size;
 

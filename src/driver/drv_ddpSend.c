@@ -175,6 +175,10 @@ commandResult_t DDP_Send(const void* context, const char* cmd, const char* args,
 	int numBytes = strlen(pData) / 2;
 	int headerSize = 10;
 	byte *data = malloc(headerSize+numBytes);
+	if (!data) {
+		addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP, "DDP_Send: malloc failed");
+		return CMD_RES_ERROR;
+	}
 	int cur = headerSize;
 	while (*pData) {
 		data[cur] = CMD_ParseOrExpandHexByte(&pData);
