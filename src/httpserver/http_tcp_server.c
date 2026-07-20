@@ -157,7 +157,7 @@ static void ping_server_thread(beken_thread_arg_t arg)
 	while(1)
 	{
 		rtos_delay_milliseconds(1000);
-		ADDLOG_ERROR(LOG_FEATURE_HTTP, "Ping thread still scheduled...");
+		ADDLOG_INFO(LOG_FEATURE_HTTP, "Ping thread still scheduled...");
 	}
 	rtos_delete_thread(NULL);
 	
