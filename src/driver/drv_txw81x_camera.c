@@ -81,6 +81,11 @@ void TXW_Cam_Init(void)
 		uint8 vcam;
 		vcam = vcam_en();
 		void* custom_buf = (void*)os_malloc(buf_size);
+		if(custom_buf == 0)
+		{
+			ADDLOG_ERROR(LOG_FEATURE_CMD, "TXW_Cam_Init: custom_buf malloc failed");
+			return;
+		}
 		custom_mem_init(custom_buf, buf_size);
 		print_custom_sram();
 		stream_work_queue_start();

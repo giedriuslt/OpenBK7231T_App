@@ -49,6 +49,10 @@ static commandResult_t testMallocFree(const void * context, const char *cmd, con
 		ra1 = 1 + abs(rand() % 1000);
 
 		msg = malloc(ra1);
+		if(msg == 0) {
+			ADDLOG_ERROR(LOG_FEATURE_CMD, "testMalloc: malloc failed");
+			return CMD_RES_OK;
+		}
 		memset(msg,rand()%255,ra1);
 		os_free(msg);
 	}

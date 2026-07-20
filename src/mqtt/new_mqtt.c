@@ -468,12 +468,12 @@ int MQTT_RegisterCallback(const char* basetopic, const char* subscriptiontopic, 
 			os_free(callbacks[index]->subscriptionTopic);
 		}
 		callbacks[index]->subscriptionTopic = (char*)os_malloc(strlen(subscriptiontopic) + 1);
-		callbacks[index]->subscriptionTopic[0] = '\0';
 		if (!callbacks[index]->subscriptionTopic) {
 			os_free(callbacks[index]->topic);
 			os_free(callbacks[index]);
 			return -3;
 		}
+		callbacks[index]->subscriptionTopic[0] = '\0';
 
 		// find out if this subscription is new.
 		for (i = 0; i < numCallbacks; i++) {
@@ -738,6 +738,9 @@ int mqtt_printf255(obk_mqtt_publishReplyPrinter_t* request, const char* fmt, ...
 		// init alloced if needed
 		if (request->allocated == 0) {
 			request->allocated = malloc(MQTT_TOTAL_BUFFER_SIZE);
+			if (request->allocated == 0) {
+				return 0;
+			}
 			strcpy(request->allocated, request->stackBuffer);
 		}
 		strcat(request->allocated, tmp);
@@ -2441,6 +2444,10 @@ void MQTT_QueuePublishWithCommand(const char* topic, const char* channel, const 
 
 	if (g_MqttPublishQueueHead == NULL) {
 		g_MqttPublishQueueHead = newItem = os_malloc(sizeof(MqttPublishItem_t));
+		if (newItem == NULL)
+		{
+			return;
+		}
 		newItem->next = NULL;
 	}
 	else {

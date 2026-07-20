@@ -184,6 +184,10 @@ void DRV_WEMO_Send_Advert_To(int mode, struct sockaddr_in *addr) {
 	if (buffer_out == 0) {
 		outBufferLen = strlen(g_wemo_msearch) + 256;
 		buffer_out = (char*)malloc(outBufferLen);
+		if (buffer_out == 0) {
+			addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP, "WEMO - malloc failed");
+			return;
+		}
 	}
 	snprintf(buffer_out, outBufferLen, g_wemo_msearch, HAL_GetMyIPString(), useType, g_uid, useType);
 

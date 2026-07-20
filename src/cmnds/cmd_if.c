@@ -904,6 +904,9 @@ float CMD_EvaluateExpression(const char *s, const char *stop) {
 	}
 	if (g_expDebugBuffer == 0) {
 		g_expDebugBuffer = malloc(EXPRESSION_DEBUG_BUFFER_SIZE);
+		if (g_expDebugBuffer == 0) {
+			return 0;
+		}
 	}
 	if (1) {
 		idx = stop - s;

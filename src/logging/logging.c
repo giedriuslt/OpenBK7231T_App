@@ -809,14 +809,34 @@ void log_server_thread(beken_thread_arg_t arg)
 	fd_set readfds;
 
 	tcp_listen_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (tcp_listen_fd < 0)
+	{
+		bk_printf("log_server_thread: failed to create server socket\r\n");
+		rtos_delete_thread(NULL);
+		return;
+	}
 	tcp_select_fd = tcp_listen_fd + 1;
 
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = INADDR_ANY;/* Accept conenction request on all network interface */
 	server_addr.sin_port = htons(logTcpPort);/* Server listen on port: 20000 */
 	err = bind(tcp_listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+	if (err != kNoErr)
+	{
+		bk_printf("log_server_thread: failed to bind server socket, err: %d\r\n", err);
+		close(tcp_listen_fd);
+		rtos_delete_thread(NULL);
+		return;
+	}
 
 	err = listen(tcp_listen_fd, 0);
+	if (err != kNoErr)
+	{
+		bk_printf("log_server_thread: failed to listen on server socket, err: %d\r\n", err);
+		close(tcp_listen_fd);
+		rtos_delete_thread(NULL);
+		return;
+	}
 
 	while (1)
 	{

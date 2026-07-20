@@ -96,11 +96,18 @@ static commandResult_t CMD_Widget_Create(const void *context, const char *cmd, c
 		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
 	}
 	widget_t *n = malloc(sizeof(widget_t));
+	if (n == 0) {
+		return CMD_RES_ERROR;
+	}
 	memset(n, 0, sizeof(widget_t));
 	n->location = Tokenizer_GetArgInteger(0);
 	n->bAllowCache = Tokenizer_GetArgInteger(1);
 	const char *fname = Tokenizer_GetArg(2);
 	n->fname = strdup(fname);
+	if (n->fname == 0) {
+		free(n);
+		return CMD_RES_ERROR;
+	}
 	Widget_Add(&g_widgets, n);
 	return CMD_RES_OK;
 }

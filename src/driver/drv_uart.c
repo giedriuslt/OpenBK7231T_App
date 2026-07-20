@@ -67,6 +67,12 @@ void UART_InitReceiveRingBufferEx(int auartindex, int size){
 	  if(fuartbuf->g_recvBuf!=0)
         free(fuartbuf->g_recvBuf);
 	  fuartbuf->g_recvBuf = (byte*)malloc(size);
+	  if(fuartbuf->g_recvBuf==0){
+        fuartbuf->g_recvBufSize = 0;
+        fuartbuf->g_recvBufIn = 0;
+        fuartbuf->g_recvBufOut = 0;
+        return;
+      }
 	  memset(fuartbuf->g_recvBuf,0,size);
     fuartbuf->g_recvBufSize = size;
     fuartbuf->g_recvBufIn = 0;

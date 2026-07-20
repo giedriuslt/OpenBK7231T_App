@@ -23,7 +23,12 @@ httpButton_t *getOrAlloc(int idx) {
 	int i;
 
 	if (idx >= g_buttonCount) {
-		g_buttons = (httpButton_t**)realloc(g_buttons, sizeof(httpButton_t*)*(idx + 1));
+		httpButton_t **tmp = (httpButton_t**)realloc(g_buttons, sizeof(httpButton_t*)*(idx + 1));
+		if (tmp == 0) {
+			// no memory, keep the existing buffer intact
+			return 0;
+		}
+		g_buttons = tmp;
 		for (i = g_buttonCount; i <= idx; i++) {
 			g_buttons[i] = 0;
 		}

@@ -147,12 +147,23 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 		towrite -= writelen;
 
 		// checksum attached at file end
-		if (startaddr + writelen > NewFWLen - 4)
+		// The checksum is the last 4 bytes of the whole firmware stream. Keep a
+		// rolling tail updated every chunk so a final TCP segment shorter than
+		// 4 bytes (writelen 1..3) never indexes before the start of writebuf.
+		if (writelen >= 4)
 		{
 			file_checksum.c[0] = writebuf[writelen - 4];
 			file_checksum.c[1] = writebuf[writelen - 3];
 			file_checksum.c[2] = writebuf[writelen - 2];
 			file_checksum.c[3] = writebuf[writelen - 1];
+		}
+		else if (writelen > 0)
+		{
+			int shift = writelen;
+			for (int ci = 0; ci < 4 - shift; ci++)
+				file_checksum.c[ci] = file_checksum.c[ci + shift];
+			for (int ci = 0; ci < shift; ci++)
+				file_checksum.c[4 - shift + ci] = writebuf[ci];
 		}
 		if (towrite > 0)
 		{
@@ -163,9 +174,15 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 	ADDLOG_DEBUG(LOG_FEATURE_OTA, "%d total bytes written, verifying checksum", total);
 	uint8_t* buf = (uint8_t*)os_malloc(2048);
+	if (buf == NULL)
+	{
+		ADDLOG_ERROR(LOG_FEATURE_OTA, "Failed to allocate checksum verify buffer");
+		ret = -1;
+		goto update_ota_exit;
+	}
 	memset(buf, 0, 2048);
 	// read flash data back and calculate checksum
 	for (int i = 0; i < NewFWLen; i += 2048)
@@ -300,7 +317,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 			ADDLOG_EXTRADEBUG(LOG_FEATURE_OTA, "Skipping %i at %i", writelen, total);
 			total += writelen;
 			toskip -= writelen;
-		} while ((toskip > 0) && (writelen >= 0));
+		} while ((toskip > 0) && (writelen > 0));
 		ADDLOG_DEBUG(LOG_FEATURE_OTA, "Skipped %i bytes, towrite: %i", total, towrite);
 	}
 	else
@@ -378,12 +395,23 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 		startaddr += writelen;
 		towrite -= writelen;
 
-		if (startaddr + writelen > NewFWLen - 4)
+		// The checksum is the last 4 bytes of the whole firmware stream. Keep a
+		// rolling tail updated every chunk so a final TCP segment shorter than
+		// 4 bytes (writelen 1..3) never indexes before the start of writebuf.
+		if (writelen >= 4)
 		{
 			file_checksum.c[0] = writebuf[writelen - 4];
 			file_checksum.c[1] = writebuf[writelen - 3];
 			file_checksum.c[2] = writebuf[writelen - 2];
 			file_checksum.c[3] = writebuf[writelen - 1];
+		}
+		else if (writelen > 0)
+		{
+			int shift = writelen;
+			for (int ci = 0; ci < 4 - shift; ci++)
+				file_checksum.c[ci] = file_checksum.c[ci + shift];
+			for (int ci = 0; ci < shift; ci++)
+				file_checksum.c[4 - shift + ci] = writebuf[ci];
 		}
 
 		if (towrite > 0)
@@ -395,9 +423,15 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 
 	uint8_t* buf = (uint8_t*)os_malloc(2048);
+	if (buf == NULL)
+	{
+		ADDLOG_ERROR(LOG_FEATURE_OTA, "Failed to allocate checksum verify buffer");
+		ret = -1;
+		goto update_ota_exit;
+	}
 	memset(buf, 0, 2048);
 	for (int i = 0; i < NewFWLen; i += 2048)
 	{
@@ -457,7 +491,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 			writelen = recv(request->fd, writebuf, request->receivedLenmax < toskip ? request->receivedLenmax : toskip, 0);
 			total += writelen;
 			toskip -= writelen;
-		} while ((toskip > 0) && (writelen >= 0));
+		} while ((toskip > 0) && (writelen > 0));
 	}
 update_ota_exit:
 	if (ret != -1)
@@ -555,12 +589,23 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 		towrite -= writelen;
 
 		// checksum attached at file end
-		if (startaddr + writelen > NewFWLen - 4)
+		// The checksum is the last 4 bytes of the whole firmware stream. Keep a
+		// rolling tail updated every chunk so a final TCP segment shorter than
+		// 4 bytes (writelen 1..3) never indexes before the start of writebuf.
+		if (writelen >= 4)
 		{
 			file_checksum.c[0] = writebuf[writelen - 4];
 			file_checksum.c[1] = writebuf[writelen - 3];
 			file_checksum.c[2] = writebuf[writelen - 2];
 			file_checksum.c[3] = writebuf[writelen - 1];
+		}
+		else if (writelen > 0)
+		{
+			int shift = writelen;
+			for (int ci = 0; ci < 4 - shift; ci++)
+				file_checksum.c[ci] = file_checksum.c[ci + shift];
+			for (int ci = 0; ci < shift; ci++)
+				file_checksum.c[4 - shift + ci] = writebuf[ci];
 		}
 		if (towrite > 0)
 		{
@@ -571,9 +616,15 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 	ADDLOG_DEBUG(LOG_FEATURE_OTA, "%d total bytes written, verifying checksum %u", total, flash_checksum);
 	uint8_t* buf = (uint8_t*)os_malloc(512);
+	if (buf == NULL)
+	{
+		ADDLOG_ERROR(LOG_FEATURE_OTA, "Failed to allocate checksum verify buffer");
+		ret = -1;
+		goto update_ota_exit;
+	}
 	memset(buf, 0, 512);
 	// read flash data back and calculate checksum
 	for (int i = 0; i < NewFWLen; i += 512)
@@ -964,7 +1015,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				goto update_ota_exit;
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 
 	//erase manifest
 	flash_erase_sector(&flash, ctx.otactrl->FlashAddr);

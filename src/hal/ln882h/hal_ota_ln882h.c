@@ -272,7 +272,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 
 	ota_persistent_finish();
 	is_ready_to_verify = LN_TRUE;

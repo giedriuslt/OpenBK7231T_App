@@ -103,7 +103,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				ADDLOG_DEBUG(LOG_FEATURE_OTA, "recv returned %d - end of data - remaining %d", writelen, towrite);
 			}
 		}
-	} while ((towrite > 0) && (writelen >= 0));
+	} while ((towrite > 0) && (writelen > 0));
 
 	ADDLOG_INFO(LOG_FEATURE_OTA, "OTA in progress: 100%%, total Write binary data length: %d", total);
 

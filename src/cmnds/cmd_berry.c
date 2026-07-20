@@ -57,6 +57,10 @@ berryInstance_t *Berry_RegisterThread() {
 	}
 	if (r == 0) {
 		r = malloc(sizeof(berryInstance_t));
+		if (r == 0) {
+			ADDLOG_ERROR(LOG_FEATURE_CMD, "Berry_RegisterThread: malloc failed");
+			return 0;
+		}
 		memset(r, 0, sizeof(berryInstance_t));
 		r->next = g_berryThreads;
 		g_berryThreads = r;

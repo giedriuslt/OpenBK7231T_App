@@ -61,7 +61,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				ret = -1;
 			}
 		}
-	} while((towrite > 0) && (writelen >= 0));
+	} while((towrite > 0) && (writelen > 0));
 
 update_ota_exit:
 	if(ret != -1)

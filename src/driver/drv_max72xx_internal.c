@@ -395,7 +395,15 @@ void MAX72XX_setupPins(max72XX_t *led, int csi, int clki, int mosii, int maxDevi
 	}
 	led->maxDevices = maxDevices;
 	led->spidata = (byte*)malloc(maxDevices * 2);
+	if (led->spidata == 0) {
+		return;
+	}
 	led->led_status = (byte*)malloc(maxDevices * 8);
+	if (led->led_status == 0) {
+		free(led->spidata);
+		led->spidata = 0;
+		return;
+	}
 	led->port_cs = csi;
 	led->port_clk = clki;
 	led->port_mosi = mosii;

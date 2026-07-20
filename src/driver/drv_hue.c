@@ -71,6 +71,10 @@ void DRV_HUE_Send_Advert_To(struct sockaddr_in *addr) {
 	if (buffer_out == 0) {
 		outBufferLen = strlen(hue_resp) + 256;
 		buffer_out = (char*)malloc(outBufferLen);
+		if (buffer_out == 0) {
+			addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP, "HUE - malloc failed");
+			return;
+		}
 	}
 	{
 		// ARGUMENTS: first IP, then bridgeID

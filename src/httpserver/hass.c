@@ -535,6 +535,10 @@ HassDeviceInfo* hass_createShutter(int index) {
 HassDeviceInfo* hass_init_device_info(ENTITY_TYPE type, int index, const char* payload_on, const char* payload_off, int asensdatasetix, const char *title) {
 	HassDeviceInfo* info = os_malloc(sizeof(HassDeviceInfo));
 	addLogAdv(LOG_DEBUG, LOG_FEATURE_HASS, "hass_init_device_info=%p", info);
+	if (!info) {
+		addLogAdv(LOG_ERROR, LOG_FEATURE_HASS, "Failed to allocate HassDeviceInfo");
+		return NULL;
+	}
 
 	hass_populate_unique_id(type, index, info->unique_id, asensdatasetix, title);
 	hass_populate_device_config_channel(type, info->unique_id, info);

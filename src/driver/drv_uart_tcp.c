@@ -73,7 +73,27 @@ static void UTCP_TX_Thd(void* param)
 			}
 			ADDLOG_EXTRADEBUG(LOG_FEATURE_DRV, "%d bytes UART RX->TCP TX: %s", len, data);
 #endif
-			ret = send(client_fd, g_utcpBuf, len, 0);
+			// bytes were already consumed from the UART buffer, so we must send
+			// them all - loop over the remainder on partial writes / EAGAIN so
+			// no UART data is silently lost
+			int sent = 0;
+			while(sent < len)
+			{
+				ret = send(client_fd, g_utcpBuf + sent, len - sent, 0);
+				if(ret > 0)
+				{
+					sent += ret;
+				}
+				else if((ret == -1) && (errno == EAGAIN))
+				{
+					rtos_delay_milliseconds(5);
+					continue;
+				}
+				else
+				{
+					goto exit;
+				}
+			}
 		}
 		else
 		{
@@ -277,6 +297,12 @@ void Start_UART_TCP(void* arg)
 	UART_TCP_Deinit();
 
 	g_utcpBuf = (byte*)os_malloc(buf_size);
+	if(g_utcpBuf == 0)
+	{
+		ADDLOG_ERROR(LOG_FEATURE_DRV, "Start_UART_TCP: buffer malloc failed");
+		rtos_suspend_thread(NULL);
+		return;
+	}
 
 	OSStatus err = rtos_create_thread(&g_trx_thread, BEKEN_APPLICATION_PRIORITY,
 		"UART_TCP_TRX",

@@ -70,13 +70,33 @@ static void CMD_ServerThread( beken_thread_arg_t arg )
     fd_set readfds;
 
     tcp_listen_fd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+    if ( tcp_listen_fd < 0 )
+    {
+        ADDLOG_ERROR(LOG_FEATURE_CMD, "Failed to create server socket");
+        rtos_delete_thread( NULL );
+        return;
+    }
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;/* Accept conenction request on all network interface */
     server_addr.sin_port = htons( CMD_SERVER_PORT );/* Server listen on port: 20000 */
     err = bind( tcp_listen_fd, (struct sockaddr *) &server_addr, sizeof(server_addr) );
+    if ( err != kNoErr )
+    {
+        ADDLOG_ERROR(LOG_FEATURE_CMD, "Failed to bind server socket, err: %d", err);
+        lwip_close( tcp_listen_fd );
+        rtos_delete_thread( NULL );
+        return;
+    }
 
     err = listen( tcp_listen_fd, 0 );
+    if ( err != kNoErr )
+    {
+        ADDLOG_ERROR(LOG_FEATURE_CMD, "Failed to listen on server socket, err: %d", err);
+        lwip_close( tcp_listen_fd );
+        rtos_delete_thread( NULL );
+        return;
+    }
 
     while ( 1 )
     {
