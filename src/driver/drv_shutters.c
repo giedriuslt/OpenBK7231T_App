@@ -366,6 +366,9 @@ static void RegisterShutterForChannel(int channel) {
 	shutter_t *s = GetForChannel(channel);
 	if (!s) {
 		s = malloc(sizeof(shutter_t));
+		if (s == 0) {
+			return;
+		}
 		memset(s, 0, sizeof(shutter_t));
 		s->channel = channel;
 		s->frac = 0.0f;  // unknown position

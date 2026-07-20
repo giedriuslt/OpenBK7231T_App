@@ -52,6 +52,9 @@ void DHT_OnPinsConfigChanged() {
 	}
 	if (g_dhts == 0) {
 		g_dhts = (dht_t**)malloc(sizeof(dht_t*)*PLATFORM_GPIO_MAX);
+		if (g_dhts == 0) {
+			return;
+		}
 		memset(g_dhts, 0, sizeof(dht_t*)*PLATFORM_GPIO_MAX);
 	}
 	for (i = 0; i < PLATFORM_GPIO_MAX; i++) {

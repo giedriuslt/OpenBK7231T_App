@@ -119,6 +119,12 @@ void Drawers_Init() {
 		free(g_timeOuts);
 	}
 	g_timeOuts = (int*)malloc(sizeof(int)*g_numLEDs);
+	if (g_timeOuts == 0) {
+		// no memory - abort init so the tick loop won't index a NULL buffer
+		g_numLEDs = 0;
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "Drawers_Init: g_timeOuts malloc failed");
+		return;
+	}
 
 	// turns on the LED
 	// http://192.168.0.123/led_index?params=4

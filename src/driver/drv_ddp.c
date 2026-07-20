@@ -219,6 +219,10 @@ void DRV_DDP_Init()
 		free(g_ddp_buffer);
 	}
 	g_ddp_buffer = malloc(g_ddp_bufferSize);
+	if (!g_ddp_buffer) {
+		addLogAdv(LOG_ERROR, LOG_FEATURE_DDP, "DRV_DDP_Init: malloc failed");
+		return;
+	}
 	DRV_DDP_CreateSocket_Receive();
 }
 

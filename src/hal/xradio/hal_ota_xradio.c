@@ -74,7 +74,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 		total += writelen;
 		towrite -= writelen;
 
-		if ((towrite > 0) && (writelen >= 0))
+		if ((towrite > 0) && (writelen > 0))
 		{
 			*eof_flag = 0;
 			rtos_delay_milliseconds(10);

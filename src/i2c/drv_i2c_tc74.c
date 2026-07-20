@@ -59,6 +59,9 @@ void DRV_I2C_AddDevice_TC74_Internal(int busType, int address, int targetChannel
 	i2cDevice_TC74_t *dev;
 
 	dev = malloc(sizeof(i2cDevice_TC74_t));
+	if (dev == 0) {
+		return;
+	}
 
 	dev->base.addr = address;
 	dev->base.busType = busType;

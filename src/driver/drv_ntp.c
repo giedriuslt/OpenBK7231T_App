@@ -274,6 +274,11 @@ void NTP_CheckForReceive() {
 			addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: Error while receiving server's msg");
         return;
     }
+    // must have at least 44 bytes to reach the transmit timestamp fields (ptr[40..43])
+    if(recv_len < 44){
+        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: response too short (%d bytes)", recv_len);
+        return;
+    }
     highWord = MAKE_WORD(ptr[40], ptr[41]);
     lowWord = MAKE_WORD(ptr[42], ptr[43]);
     // combine the four bytes (two words) into a long integer

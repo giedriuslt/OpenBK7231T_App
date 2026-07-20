@@ -11,6 +11,7 @@ ms_publish cmnd/obk174083A4/POWER TOGGLE
 #include "lwip/inet.h"
 #include "lwip/ip_addr.h"
 #include "lwip/sockets.h"
+#include "errno.h"
 
 #if ENABLE_DRIVER_MQTTSERVER
 
@@ -64,6 +65,7 @@ typedef struct mqttClient_s {
   byte *recvBuf;
   int recvBufUsed;
   int recvBufCap;
+  int bDisconnect; // set when a send fails; client is dropped in the poll loop
   struct mqttClient_s *next;
 } mqttClient_t;
 
@@ -113,6 +115,12 @@ static void MQTTS_SendToClient(mqttClient_t *c, const byte *data, int len) {
   int r = send(c->socket, (const char *)data, len, 0);
   if (r > 0) {
     c->bytesSent += r;
+  } else if (r < 0) {
+    // EWOULDBLOCK/EAGAIN just means the send buffer is full on this
+    // non-blocking socket; any other error means the client is dead.
+    if (errno != EWOULDBLOCK && errno != EAGAIN) {
+      c->bDisconnect = 1;
+    }
   }
 }
 
@@ -799,6 +807,14 @@ void DRV_MQTTServer_RunQuickTick() {
   mqttClient_t *c = g_clientList;
   while (c) {
     mqttClient_t *next = c->next; // save next before possible free
+    if (c->bDisconnect) {
+      // a send to this client failed on a previous packet/tick
+      addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,
+                "MQTTS: client '%s' send error, disconnecting", c->clientID);
+      MQTTS_FreeClient(c);
+      c = next;
+      continue;
+    }
     if (!c->recvBuf || c->recvBufCap == 0) {
       c = next;
       continue;
@@ -856,8 +872,16 @@ void DRV_MQTTServer_RunQuickTick() {
       addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL, "MQTTS: client '%s' TCP closed",
                 c->clientID);
       MQTTS_FreeClient(c);
+    } else {
+      // nbytes < 0: EWOULDBLOCK/EAGAIN is the normal "no data" case on a
+      // non-blocking socket; any other errno is a real error, so drop the
+      // dead client instead of leaking it.
+      if (errno != EWOULDBLOCK && errno != EAGAIN) {
+        addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,
+                  "MQTTS: client '%s' recv error, disconnecting", c->clientID);
+        MQTTS_FreeClient(c);
+      }
     }
-    // nbytes < 0 means EWOULDBLOCK, ignore
     c = next;
   }
 }

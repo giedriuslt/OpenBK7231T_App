@@ -40,6 +40,10 @@ commandResult_t Cmd_ADCButtonMap(const void* context, const char* cmd, const cha
 		free(g_ranges);
 	cnt = Tokenizer_GetArgsCount();
 	g_ranges = (int*)malloc(sizeof(int)*cnt);
+	if (g_ranges == 0) {
+		g_numRanges = 0;
+		return CMD_RES_ERROR;
+	}
 	for (i = 0; i < cnt; i++) {
 		g_ranges[i] = Tokenizer_GetArgInteger(i);
 	}

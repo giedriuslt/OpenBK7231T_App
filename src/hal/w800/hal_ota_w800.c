@@ -132,7 +132,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 				nRetCode = -17;
 			}
 		}
-	} while ((nRetCode == 0) && (towrite > 0) && (writelen >= 0));
+	} while ((nRetCode == 0) && (towrite > 0) && (writelen > 0));
 
 	tls_mem_free(Buffer);
 
@@ -269,7 +269,7 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
 		}
 		ADDLOG_DEBUG(LOG_FEATURE_OTA, "Downloaded %d / %d", recvLen, totalLen);
 		rtos_delay_milliseconds(10);	// give some time for flashing - will else increase used memory fast 
-	} while ((nRetCode == 0) && (towrite > 0) && (writelen >= 0));
+	} while ((nRetCode == 0) && (towrite > 0) && (writelen > 0));
 	bk_printf("Download completed (%d / %d)\n", recvLen, totalLen);
 	if (Buffer) os_free(Buffer);
 	if (p) pbuf_free(p);

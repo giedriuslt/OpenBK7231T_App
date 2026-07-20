@@ -189,6 +189,9 @@ void DRV_I2C_AddDevice_MCP23017_Internal(int busType, int address) {
 	i2cDevice_MCP23017_t *dev;
 
 	dev = malloc(sizeof(i2cDevice_MCP23017_t));
+	if (dev == 0) {
+		return;
+	}
 
 	dev->base.addr = address;
 	dev->base.busType = busType;

@@ -80,12 +80,25 @@ static void PB_SendFrame(int client_sock, uint32_t msg_type, uint8_t* payload, u
 
 	int header_len = ptr - header;
 
-	// Send Header
-	send(client_sock, header, header_len, 0);
+	// Send Header. This is a length-prefixed stream, so a failed or short write
+	// desyncs the whole connection - drop the client instead of continuing.
+	int r = send(client_sock, header, header_len, 0);
+	if(r != header_len)
+	{
+		ADDLOG_ERROR(LOG_FEATURE_DRV, "ESPHomeAPI: header send failed (%d/%d), dropping client", r, header_len);
+		shutdown(client_sock, SHUT_RDWR);
+		return;
+	}
 	// Send Payload
 	if(payload_len > 0)
 	{
-		send(client_sock, payload, payload_len, 0);
+		r = send(client_sock, payload, payload_len, 0);
+		if(r != (int)payload_len)
+		{
+			ADDLOG_ERROR(LOG_FEATURE_DRV, "ESPHomeAPI: payload send failed (%d/%u), dropping client", r, payload_len);
+			shutdown(client_sock, SHUT_RDWR);
+			return;
+		}
 	}
 }
 

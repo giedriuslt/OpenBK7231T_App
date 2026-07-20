@@ -246,6 +246,10 @@ scriptInstance_t *SVM_RegisterThread() {
 	}
 	if(r == 0) {
 		r = malloc(sizeof(scriptInstance_t));
+		if(r == 0) {
+			ADDLOG_ERROR(LOG_FEATURE_CMD, "SVM_RegisterThread: malloc failed");
+			return 0;
+		}
 		memset(r,0,sizeof(scriptInstance_t));
 		r->next = g_scriptThreads;
 		g_scriptThreads = r;
@@ -276,8 +280,17 @@ scriptFile_t *SVM_RegisterFile(const char *fname) {
 		r = r->next;
 	}
 	r = malloc(sizeof(scriptFile_t));
+	if(r == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "SVM_RegisterFile: malloc failed");
+		return 0;
+	}
 	memset(r,0,sizeof(scriptFile_t));
 	r->fname = strdup(fname);
+	if(r->fname == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "SVM_RegisterFile: strdup failed");
+		free(r);
+		return 0;
+	}
 	// cast from byte* to char*
 	if (!strcmp(fname, "@startup")) {
 		r->data = strdup(CFG_GetShortStartupCommand());
@@ -303,9 +316,17 @@ scriptFile_t *SVM_RegisterFileForText(const char *txt) {
 		r = r->next;
 	}
 	r = malloc(sizeof(scriptFile_t));
+	if (r == 0) {
+		ADDLOG_ERROR(LOG_FEATURE_CMD, "SVM_RegisterFileForText: malloc failed");
+		return 0;
+	}
 	memset(r, 0, sizeof(scriptFile_t));
 	r->fname = strdup(txt);
 	r->data = strdup(txt);
+	r->next = g_scriptFiles;
+	g_scriptFiles = r;
+	if (r->data == 0)
+		return 0;
 	// convert backlog to script
 	char *p = r->data;
 	while (*p) {
@@ -314,10 +335,6 @@ scriptFile_t *SVM_RegisterFileForText(const char *txt) {
 		}
 		p++;
 	}
-	r->next = g_scriptFiles;
-	g_scriptFiles = r;
-	if (r->data == 0)
-		return 0;
 	return r;
 }
 const char *SVM_SkipWS(const char *p) {
@@ -418,8 +435,12 @@ void SVM_RunThread(scriptInstance_t *t, int maxLoops) {
 			// skip empty lines and skip labels
 			if(len > 0 && start[len-1] != ':') {
 				if(len >= g_scrBufferSize) {
+					char *tmp = (char*)realloc(g_scrBuffer, (len + 256) + 1);
+					if (tmp == NULL) {
+						return;
+					}
+					g_scrBuffer = tmp;
 					g_scrBufferSize = len + 256;
-					g_scrBuffer = (char*)realloc(g_scrBuffer, g_scrBufferSize+1);
 				}
 				if (g_scrBuffer == NULL) {
 					return;

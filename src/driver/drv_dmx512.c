@@ -102,6 +102,9 @@ void DMX_Init() {
 	dmx_pin = Tokenizer_GetPin(1, dmx_pin);
 
 	g_dmxBuffer = (byte*)malloc(DMX_BUFFER_SIZE);
+	if (g_dmxBuffer == 0) {
+		return;
+	}
 	memset(g_dmxBuffer, 0, DMX_BUFFER_SIZE);
 	ledStrip_t ws_export;
 	ws_export.apply = DMX_Show;

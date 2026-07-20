@@ -665,6 +665,9 @@ void TM_GN_Display_SharedInit(tmGnType_t type) {
 
 	if (tmgn_buffer == 0) {
 		tmgn_buffer = (byte*)malloc(g_totalDigits);
+		if (tmgn_buffer == 0) {
+			return;
+		}
 		memset(tmgn_buffer, 0, g_totalDigits);
 	}
 

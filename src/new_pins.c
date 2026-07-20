@@ -86,6 +86,9 @@ void PIN_DeepSleep_MakeSureEdgesAreAlloced() {
 	int i;
 	if (g_defaultWakeEdge == 0) {
 		g_defaultWakeEdge = (byte*)malloc(PLATFORM_GPIO_MAX);
+		if (g_defaultWakeEdge == 0) {
+			return;
+		}
 		for (i = 0; i < PLATFORM_GPIO_MAX; i++) {
 			g_defaultWakeEdge[i] = 2;//default
 		}
@@ -93,11 +96,17 @@ void PIN_DeepSleep_MakeSureEdgesAreAlloced() {
 }
 void PIN_DeepSleep_SetWakeUpEdge(int pin, byte edgeCode) {
 	PIN_DeepSleep_MakeSureEdgesAreAlloced();
+	if (g_defaultWakeEdge == 0) {
+		return;
+	}
 	g_defaultWakeEdge[pin] = edgeCode;
 }
 void PIN_DeepSleep_SetAllWakeUpEdges(byte edgeCode) {
 	int i;
 	PIN_DeepSleep_MakeSureEdgesAreAlloced();
+	if (g_defaultWakeEdge == 0) {
+		return;
+	}
 	for (i = 0; i < PLATFORM_GPIO_MAX; i++) {
 		g_defaultWakeEdge[i] = edgeCode;
 	}
@@ -1749,6 +1758,9 @@ void CHANNEL_AddClamped(int ch, int iDelta, int min, int max, int bWrapInsteadOf
 		// ping-pong logic
 		if (g_channelPingPongs == 0) {
 			g_channelPingPongs = (char*)malloc(CHANNEL_MAX);
+			if (g_channelPingPongs == 0) {
+				return;
+			}
 			memset(g_channelPingPongs, 1, CHANNEL_MAX);
 		}
 		int prevVal = CHANNEL_Get(ch);

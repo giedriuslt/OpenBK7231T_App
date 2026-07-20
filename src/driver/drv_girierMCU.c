@@ -90,17 +90,34 @@ GirierMCUPacket_t *GirierMCU_AddToQueue(int len) {
 		gmcu_emptyPackets = toUse->next;
 
 		if (len > toUse->allocated) {
-			toUse->data = realloc(toUse->data, len);
+			byte *tmp = realloc(toUse->data, len);
+			if (tmp == 0) {
+				// restore the recycled packet to the empty list
+				toUse->next = gmcu_emptyPackets;
+				gmcu_emptyPackets = toUse;
+				addLogAdv(LOG_ERROR, LOG_FEATURE_TUYAMCU, "GirierMCU queue realloc failed");
+				return 0;
+			}
+			toUse->data = tmp;
 			toUse->allocated = len;
 		}
 	}
 	else {
 		toUse = malloc(sizeof(GirierMCUPacket_t));
+		if (toUse == 0) {
+			addLogAdv(LOG_ERROR, LOG_FEATURE_TUYAMCU, "GirierMCU queue malloc failed");
+			return 0;
+		}
 		int toAlloc = 128;
 		if (len > toAlloc)
 			toAlloc = len;
 		toUse->allocated = toAlloc;
 		toUse->data = malloc(toUse->allocated);
+		if (toUse->data == 0) {
+			free(toUse);
+			addLogAdv(LOG_ERROR, LOG_FEATURE_TUYAMCU, "GirierMCU queue data malloc failed");
+			return 0;
+		}
 	}
 	toUse->size = len;
 	if (gmcu_sendPackets == 0) {
@@ -184,6 +201,10 @@ girierMCUMapping_t* GirierMCU_MapIDToChannel(int dpId, int dpType, int channel, 
 
 	if (cur == 0) {
 		cur = (girierMCUMapping_t*)malloc(sizeof(girierMCUMapping_t));
+		if (cur == 0) {
+			addLogAdv(LOG_ERROR, LOG_FEATURE_TUYAMCU, "GirierMCU mapping malloc failed");
+			return 0;
+		}
 		cur->next = g_girierMappings;
 		cur->rawData = 0;
 		cur->rawDataLen = 0;
@@ -547,8 +568,14 @@ void GirierMCU_Init() {
 	addLogAdv(LOG_DEBUG, LOG_FEATURE_TUYAMCU, "_Init() called");
 	g_girierNextRequestDelay = 1;
 	if (g_GirierMCUpayloadBuffer == 0) {
-		g_GirierMCUpayloadBufferSize = GIRIERMCU_BUFFER_SIZE;
 		g_GirierMCUpayloadBuffer = (byte*)malloc(GIRIERMCU_BUFFER_SIZE);
+		if (g_GirierMCUpayloadBuffer == 0) {
+			g_GirierMCUpayloadBufferSize = 0;
+			addLogAdv(LOG_ERROR, LOG_FEATURE_TUYAMCU, "GirierMCU payload buffer malloc failed");
+		}
+		else {
+			g_GirierMCUpayloadBufferSize = GIRIERMCU_BUFFER_SIZE;
+		}
 	}
 
 	UART_InitUART(g_baudRate, 0, false);

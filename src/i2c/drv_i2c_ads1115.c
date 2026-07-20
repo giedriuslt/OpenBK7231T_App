@@ -81,6 +81,9 @@ void DRV_I2C_AddDevice_ADS1115_Internal(int busType, int address, byte channels[
 	i2cDevice_ADS1115_t *dev;
 
 	dev = malloc(sizeof(i2cDevice_ADS1115_t));
+	if (dev == 0) {
+		return;
+	}
 
 	dev->base.addr = address;
 	dev->base.busType = busType;

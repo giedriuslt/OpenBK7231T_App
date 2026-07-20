@@ -259,6 +259,10 @@ static void DRV_SSDP_Send_Advert_To(struct sockaddr_in *addr) {
     if (!advert_message){
         advert_maxlen = strlen(message_template) +  100;
         advert_message = (char *)malloc(advert_maxlen+1);
+        if (!advert_message){
+            addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP,"DRV_SSDP_Send_Advert_To: malloc failed");
+            return;
+        }
     }
 
     snprintf(advert_message, advert_maxlen, message_template, 
@@ -311,6 +315,10 @@ static void DRV_SSDP_Send_Notify() {
     if (!notify_message){
         notify_maxlen = strlen(notify_template) +  100;
         notify_message = (char *)malloc(notify_maxlen+1);
+        if (!notify_message){
+            addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP,"DRV_SSDP_Send_Notify: malloc failed");
+            return;
+        }
     }
 
     snprintf(notify_message, notify_maxlen, notify_template, myip, g_ssdp_uuid);
@@ -385,6 +393,10 @@ static int DRV_SSDP_Service_Http(http_request_t* request){
             strlen(myip) + 
             40;
         http_message = (char *)malloc(http_message_len+1);
+        if (!http_message){
+            addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP,"DRV_SSDP_Service_Http: malloc failed");
+            return -1;
+        }
     }
 
 	addLogAdv(LOG_DEBUG, LOG_FEATURE_HTTP, "DRV_SSDP_Service_Http");
@@ -482,6 +494,10 @@ void DRV_SSDP_RunQuickTick() {
 
     if (!udp_msgbuf){
         udp_msgbuf = (char *)malloc(UDP_MSGBUF_LEN+1);
+        if (!udp_msgbuf){
+            addLogAdv(LOG_ERROR, LOG_FEATURE_HTTP,"DRV_SSDP_RunQuickTick: malloc failed");
+            return ;
+        }
     }
 
     socklen_t addrlen = sizeof(addr);
