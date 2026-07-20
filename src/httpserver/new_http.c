@@ -682,8 +682,10 @@ int postany(http_request_t *request, const char *str, int len)
         
         if (i < 0) {
             // Handle error (e.g., EINTR means interrupted, we can retry)
-            if (errno == EINTR) continue;
-			ADDLOG_ERROR(LOG_FEATURE_HTTP, "postany fail %i", i);
+			int ge = errno;
+            if (ge == EINTR) continue;
+			
+			ADDLOG_ERROR(LOG_FEATURE_HTTP, "postany fail %i errno %i fd %i", i, ge, request->fd);
             return -1; 
         }
         
