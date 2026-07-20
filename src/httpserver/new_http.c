@@ -675,7 +675,20 @@ void setupAllWB2SPinsAsButtons()
 int postany(http_request_t *request, const char *str, int len)
 {
 #if PLATFORM_BL602 || PLATFORM_BEKEN_NEW || PLATFORM_RTL8720D
-	send(request->fd, str, len, 0);
+	//send(request->fd, str, len, 0);
+	const char *ptr = (const char*) str;
+	while (len > 0) {
+        int i = send(request->fd, ptr, len, 0);
+        
+        if (i < 0) {
+            // Handle error (e.g., EINTR means interrupted, we can retry)
+            if (errno == EINTR) continue;
+            return -1; 
+        }
+        
+        ptr += i;
+        len -= i;
+    }
 	return 0;
 #else
 	int currentlen;
