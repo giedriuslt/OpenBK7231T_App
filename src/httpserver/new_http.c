@@ -304,7 +304,12 @@ bool http_checkUrlBase(const char *base, const char *fileName)
 
 void http_setup(http_request_t *request, const char *type)
 {
-	hprintf255(request, httpHeader, request->responseCode, type);
+	//hprintf255(request, httpHeader, request->responseCode, type);
+	poststr(request, "HTTP/1.1 ");
+	poststr(request, "200 ");
+	poststr(request, "OK");
+	poststr(request, "\r\nContent-Type: ");
+	poststr(request, type);
 	poststr(request, "\r\n"); // next header
 	poststr(request, httpCorsHeaders);
 #if 0
