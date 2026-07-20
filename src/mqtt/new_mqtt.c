@@ -1229,6 +1229,13 @@ static int MQTT_do_connect(mqtt_client_t* client)
 	char will_topic[CGF_MQTT_CLIENT_ID_SIZE + 16];
 	bool mqtt_use_tls, mqtt_verify_tls_cert;
 
+	if (client == 0) {
+		// mqtt_client_new() can fail under memory pressure;
+		// mqtt_client_connect(NULL,...) would crash with a NULL dereference
+		addLogAdv(LOG_ERROR, LOG_FEATURE_MQTT, "MQTT_do_connect: client is NULL");
+		return ERR_MEM;
+	}
+
 	mqtt_host = CFG_GetMQTTHost();
 
 	if (!mqtt_host[0]) {
@@ -2255,6 +2262,13 @@ int MQTT_RunEverySecondUpdate()
 					LOCK_TCPIP_CORE();
 					mqtt_client = mqtt_client_new();
 					UNLOCK_TCPIP_CORE();
+					if (mqtt_client == 0)
+					{
+						// out of (lwIP) memory - retry next second
+						addLogAdv(LOG_ERROR, LOG_FEATURE_MQTT, "mqtt_client_new failed (out of memory), will retry");
+						MQTT_Mutex_Free();
+						return 0;
+					}
 				}
 				else
 				{
