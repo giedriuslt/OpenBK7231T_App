@@ -57,6 +57,7 @@ void bg_register_irda_check_func(FUNCPTR func);
 extern void WFI(void);
 #elif PLATFORM_BL602 && !PLATFORM_BL_NEW
 #include <bl_sys.h>
+#include <hal_sys.h>
 #include <hosal_adc.h>
 #include <bl_wdt.h>
 #elif PLATFORM_W600 || PLATFORM_W800
@@ -499,6 +500,8 @@ const char* CFG_GetWiFiPassX() {
 
 void Main_OnWiFiStatusChange(int code)
 {
+	static int dcount = 0;
+	static uint8_t capcode=0;
 	// careful what you do in here.
 	// e.g. creata socket?  probably not....
 	switch (code)
@@ -509,6 +512,20 @@ void Main_OnWiFiStatusChange(int code)
 		ADDLOGF_INFO("%s - WIFI_STA_CONNECTING - %i", __func__, code);
 		break;
 	case WIFI_STA_DISCONNECTED:
+		HAL_DisconnectFromWifi();
+		dcount++;
+		if (dcount == 5)
+		{
+			dcount =0;
+			uint8_t capcodereal = hal_sys_capcode_get();
+			capcode = capcode+1;
+			if (capcode>63)
+			{
+				capcode = 0;
+			}
+			ADDLOGF_INFO("WiFi capcode setting update: %u before %u", capcode, capcodereal);
+			hal_sys_capcode_update(capcode, capcode);
+		}
 		// try to connect again in few seconds
 		// if we are already disconnected, why must we call disconnect again?
 #if PLATFORM_BEKEN
