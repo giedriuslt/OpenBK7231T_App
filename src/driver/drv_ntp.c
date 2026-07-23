@@ -16,6 +16,22 @@
 #include "../libraries/obktime/obktime.h"	// for time functions
 #include "drv_ntp.h"
 
+// Platform-agnostic tick wrappers to support both BL602 (FreeRTOS) and Windows Simulator
+#if WINDOWS
+#include <windows.h>
+#define GET_MCU_TICKS() GetTickCount()
+#define MCU_TICKS_PER_SEC 1000
+#else
+#include "FreeRTOS.h"
+#include "task.h"
+#define GET_MCU_TICKS() xTaskGetTickCount()
+#ifdef configTICK_RATE_HZ
+#define MCU_TICKS_PER_SEC configTICK_RATE_HZ
+#else
+#define MCU_TICKS_PER_SEC 1000
+#endif
+#endif
+
 #define LOG_FEATURE LOG_FEATURE_NTP
 
 typedef struct
@@ -68,6 +84,16 @@ static int g_timeOffsetSeconds = 0;
 time_t g_ntpTime;
 static unsigned int g_ntp_syncinterval=60;
 
+// --- Sub-Second Clock Drift Tracking Variables ---
+static bool g_drift_initialized = false;
+static uint32_t g_baseline_ntp_secs = 0;   // Baseline sync whole seconds
+static float g_baseline_ntp_frac = 0.0f;   // Baseline sync fraction of a second
+static uint32_t g_last_ntp_secs = 0;       // Previous sync whole seconds
+static float g_last_ntp_frac = 0.0f;       // Previous sync fraction of a second
+static uint32_t g_last_ticks = 0;          // MCU Ticks recorded at previous sync
+static float g_accumulated_drift_seconds = 0.0f; 
+static float g_drift_ppm = 0.0f;           // Parts Per Million drift rate
+
 int NTP_GetTimesZoneOfsSeconds()
 {
     return g_timeOffsetSeconds;
@@ -76,85 +102,31 @@ int NTP_GetTimesZoneOfsSeconds()
 // set offset seconds directly
 void NTP_SetTimesZoneOfsSeconds(int o) {
 /*
-	g_ntpTime -= g_timeOffsetSeconds;	// sub old offset
-	g_timeOffsetSeconds = o;		// set new offset
-	g_ntpTime += g_timeOffsetSeconds;	// add offset again
 */	
 	g_timeOffsetSeconds = o;		// set new offset
 	TIME_setDeviceTimeOffset(g_timeOffsetSeconds);
 }
 
-
-//Set custom NTP server
-commandResult_t NTP_SetServer(const void *context, const char *cmd, const char *args, int cmdFlags) {
-    const char *newValue;
-
-    Tokenizer_TokenizeString(args,0);
-	// following check must be done after 'Tokenizer_TokenizeString',
-	// so we know arguments count in Tokenizer. 'cmd' argument is
-	// only for warning display
-	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
-		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
-	}
-    newValue = Tokenizer_GetArg(0);
-    CFG_SetNTPServer(newValue);
-    addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "NTP server set to %s", newValue);
-    return CMD_RES_OK;
-}
-
-//Display settings used by the NTP driver
-commandResult_t NTP_Info(const void *context, const char *cmd, const char *args, int cmdFlags) {
-    addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "Server=%s, Time offset=%d", CFG_GetNTPServer(), TIME_GetTimesZoneOfsSeconds());
-    return CMD_RES_OK;
-}
-
-#if WINDOWS
-bool b_ntp_simulatedTime = false;
-void NTP_SetSimulatedTime(unsigned int timeNow) {
-/*
-	g_ntpTime = timeNow;
-	g_ntpTime += g_timeOffsetSeconds;
-*/
-	TIME_setDeviceTime(timeNow);
-#if ENABLE_TIME_DST
-//	g_ntpTime += setDST(0)*60;
-	setDST(0);
-#endif
-	g_synced = true;
-	b_ntp_simulatedTime = true;
-}
-#endif
 void NTP_Init() {
 
-#if WINDOWS
-	b_ntp_simulatedTime = false;
-#endif
 	//cmddetail:{"name":"ntp_timeZoneOfs","args":"[Value]",
 	//cmddetail:"descr":"Sets the time zone offset in hours. Also supports HH:MM syntax if you want to specify value in minutes. For negative values, use -HH:MM syntax, for example -5:30 will shift time by 5 hours and 30 minutes negative.",
 	//cmddetail:"fn":"SetTimeZoneOfs","file":"driver/drv_ntp.c","requires":"",
 	//cmddetail:"examples":""}
     CMD_RegisterCommand("ntp_timeZoneOfs",SetTimeZoneOfs, NULL);
-	//cmddetail:{"name":"ntp_setServer","args":"[ServerIP]",
-	//cmddetail:"descr":"Sets the NTP server",
-	//cmddetail:"fn":"NTP_SetServer","file":"driver/drv_ntp.c","requires":"",
-	//cmddetail:"examples":""}
-    CMD_RegisterCommand("ntp_setServer", NTP_SetServer, NULL);
-	//cmddetail:{"name":"ntp_info","args":"",
-	//cmddetail:"descr":"Display NTP related settings",
-	//cmddetail:"fn":"NTP_Info","file":"driver/drv_ntp.c","requires":"",
-	//cmddetail:"examples":""}
-    CMD_RegisterCommand("ntp_info", NTP_Info, NULL);
     
     g_ntp_syncinterval = Tokenizer_GetArgIntegerDefault(1, 60);
 
     addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "NTP driver initialized with server=%s, offset=%d, syncing every %i seconds", CFG_GetNTPServer(), g_timeOffsetSeconds, g_ntp_syncinterval);
     g_synced = false;
+    g_drift_initialized = false;
 }
 
 // if driver is stopped, we need to make sure, we don't keep NTP in state "synched"
 void NTP_Stop() {
     addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "NTP driver stopped");
     g_synced = false;
+    g_drift_initialized = false;
 }
 
 // just for compatibility 
@@ -164,8 +136,6 @@ unsigned int NTP_GetCurrentTime() {
 unsigned int NTP_GetCurrentTimeWithoutOffset() {
 	return TIME_GetCurrentTimeWithoutOffset();
 }
-
-
 
 void NTP_Shutdown() {
     if(g_ntp_socket != 0) {
@@ -179,30 +149,24 @@ void NTP_Shutdown() {
     // can attempt in next 10 seconds
     g_ntp_delay = g_ntp_syncinterval-1;
 }
+
 void NTP_SendRequest(bool bBlocking) {
     byte *ptr;
 	const char *adrString;
-    //int i, recv_len;
-    //char buf[64];
     ntp_packet packet = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     adrLen = sizeof(g_address);
     memset( &packet, 0, sizeof( ntp_packet ) );
     ptr = (byte*)&packet;
-    // Initialize values needed to form NTP request
-    // (see URL above for details on the packets)
     ptr[0] = 0xE3;   // LI, Version, Mode
     ptr[1] = 0;     // Stratum, or type of clock
     ptr[2] = 6;     // Polling Interval
     ptr[3] = 0xEC;  // Peer Clock Precision
-    // 8 bytes of zero for Root Delay & Root Dispersion
     ptr[12]  = 49;
     ptr[13]  = 0x4E;
     ptr[14]  = 49;
     ptr[15]  = 52;
 
-
-    //create a UDP socket
     if ((g_ntp_socket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP )) == -1)
     {
         g_ntp_socket = 0;
@@ -223,21 +187,16 @@ void NTP_SendRequest(bool bBlocking) {
     g_address.sin_addr.s_addr = inet_addr(adrString);
     g_address.sin_port = htons(123);
 
-
-    // Send the message to server:
     if(sendto(g_ntp_socket, &packet, sizeof(packet), 0,
          (struct sockaddr*)&g_address, adrLen) < 0) {
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: Unable to send message");
         NTP_Shutdown();
-		// quick next frame attempt
 		if (g_secondsElapsed < 60) {
 			g_ntp_delay = 0;
 		}
         return;
     }
 
-    // https://github.com/tuya/tuya-iotos-embeded-sdk-wifi-ble-bk7231t/blob/5e28e1f9a1a9d88425f3fd4b658e895a8ee7b83b/platforms/bk7231t/tuya_os_adapter/src/system/tuya_hal_network.c
-    //
     if(bBlocking == false) {
 #if WINDOWS
 #else
@@ -247,21 +206,18 @@ void NTP_SendRequest(bool bBlocking) {
 #endif
     }
 
-    // can attempt in next 10 seconds
     g_ntp_delay = 10;
 }
+
 void NTP_CheckForReceive() {
     byte *ptr;
     int i, recv_len;
-    //struct tm * ptm;
     unsigned short highWord;
     unsigned short lowWord;
     unsigned int secsSince1900;
-    struct tm *ltm;
     ntp_packet packet = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     ptr = (byte*)&packet;
 
-    // Receive the server's response:
     i = sizeof(packet);
 #if 0
     recv_len = recvfrom(g_ntp_socket, ptr, i, 0,
@@ -271,64 +227,98 @@ void NTP_CheckForReceive() {
 #endif
 
     if(recv_len < 0){
-			addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: Error while receiving server's msg");
+        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: Error while receiving server's msg");
         return;
     }
-    // must have at least 44 bytes to reach the transmit timestamp fields (ptr[40..43])
-    if(recv_len < 44){
-        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: response too short (%d bytes)", recv_len);
+    // Must be at least 48 bytes to contain both transmit seconds (40-43) and fraction (44-47)
+    if(recv_len < 48){
+        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: response too short for millisecond parsing (%d bytes)", recv_len);
         return;
     }
+
+    // Extract seconds (Bytes 40-43)
     highWord = MAKE_WORD(ptr[40], ptr[41]);
     lowWord = MAKE_WORD(ptr[42], ptr[43]);
-    // combine the four bytes (two words) into a long integer
-    // this is NTP time (seconds since Jan 1 1900):
     secsSince1900 = highWord << 16 | lowWord;
-    addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"Seconds since Jan 1 1900 = %u",secsSince1900);
 
-/*
-    g_ntpTime = secsSince1900 - NTP_OFFSET;
-    g_ntpTime += g_timeOffsetSeconds;
-*/
-   TIME_setDeviceTime((uint32_t) (secsSince1900 - NTP_OFFSET) );
-//    g_ntpTime=(time_t)TIME_GetCurrentTime();
+    // Extract fractional part of the second (Bytes 44-47)
+    unsigned short fracHighWord = MAKE_WORD(ptr[44], ptr[45]);
+    unsigned short fracLowWord = MAKE_WORD(ptr[46], ptr[47]);
+    uint32_t rawFraction = ((uint32_t)fracHighWord << 16) | fracLowWord;
+    
+    // Scale fraction to structural float percentage (0.0 to 1.0 seconds)
+    float current_ntp_frac = (float)rawFraction / 4294967296.0f;
+
+    addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP Time: %u.%.3f", secsSince1900, current_ntp_frac);
+
+    // ---- Enhanced Sub-Second Drift Calculation Engine ----
+    {
+        uint32_t current_ntp_secs = secsSince1900 - NTP_OFFSET;
+        uint32_t current_ticks = GET_MCU_TICKS();
+
+        if (!g_drift_initialized) {
+            g_baseline_ntp_secs = current_ntp_secs;
+            g_baseline_ntp_frac = current_ntp_frac;
+            g_last_ntp_secs = current_ntp_secs;
+            g_last_ntp_frac = current_ntp_frac;
+            g_last_ticks = current_ticks;
+            g_accumulated_drift_seconds = 0.0f;
+            g_drift_ppm = 0.0f;
+            g_drift_initialized = true;
+            addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "High-resolution drift baseline tracking established.");
+        } else {
+            uint32_t ticks_delta = current_ticks - g_last_ticks;
+            uint32_t ntp_delta_secs = current_ntp_secs - g_last_ntp_secs;
+            float ntp_delta_frac = current_ntp_frac - g_last_ntp_frac;
+            
+            // Combine delta components directly to bypass float resolution truncation limits
+            float ntp_delta_total = (float)ntp_delta_secs + ntp_delta_frac;
+
+            if (ntp_delta_total > 0.0f) {
+                float local_seconds_delta = (float)ticks_delta / (float)MCU_TICKS_PER_SEC;
+                float interval_drift = local_seconds_delta - ntp_delta_total;
+                
+                g_accumulated_drift_seconds += interval_drift;
+                
+                // Compute absolute duration from baseline baseline for tracking stability
+                uint32_t total_ntp_secs = current_ntp_secs - g_baseline_ntp_secs;
+                float total_ntp_frac = current_ntp_frac - g_baseline_ntp_frac;
+                float total_ntp_elapsed = (float)total_ntp_secs + total_ntp_frac;
+                
+                if (total_ntp_elapsed > 0.0f) {
+                    g_drift_ppm = (g_accumulated_drift_seconds / total_ntp_elapsed) * 1000000.0f;
+                }
+
+                addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "Drift Update: Int=%.4fs, Cumul=%.4fs, Rate=%.2f PPM", 
+                          interval_drift, g_accumulated_drift_seconds, g_drift_ppm);
+                
+                g_last_ntp_secs = current_ntp_secs;
+                g_last_ntp_frac = current_ntp_frac;
+                g_last_ticks = current_ticks;
+            }
+        }
+    }
+    // ------------------------------------------------------
+
+    TIME_setDeviceTime((uint32_t) (secsSince1900 - NTP_OFFSET) );
     addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"Unix time: %u - local Time %s",(uint32_t) (secsSince1900 - NTP_OFFSET),TS2STR(TIME_GetCurrentTime(),TIME_FORMAT_LONG));
-//    ltm = gmtime(&g_ntpTime);
-//    addLogAdv(LOG_INFO, LOG_FEATURE_NTP, LTSTR, LTM2TIME(ltm));
 
 	if (g_synced == false) {
 		EventHandlers_FireEvent(CMD_EVENT_NTP_STATE, 1);
-		// so now clock is synced. If it wasn't set before, start "TIME_Init()" for timed events
-		// done in CMD_Init_Delayed()  in cmd_main.c
-//		if (! TIME_IsTimeSynced() ) TIME_Init();
 	}
     g_synced = true;
-#if 0
-    //ptm = gmtime (&g_ntpTime);
-    ptm = gmtime(&g_ntpTime);
-    if(ptm == 0) {
-        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"gmtime somehow returned 0");
-    } else {
-        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"gmtime => tm_year: %i",ptm->tm_year);
-        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"gmtime => tm_mon: %i",ptm->tm_mon);
-        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"gmtime => tm_mday: %i",ptm->tm_mday);
-        addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"gmtime => tm_hour: %i",ptm->tm_hour  );
-    }
-#endif
-    NTP_Shutdown();
 
+    NTP_Shutdown();
 }
 
 void NTP_SendRequest_BlockingMode() {
     NTP_Shutdown();
     NTP_SendRequest(true);
     NTP_CheckForReceive();
-
 }
 
 void NTP_OnEverySecond()
 {
-
     if(Main_IsConnectedToWiFi()==0)
     {
         return;
@@ -343,7 +333,6 @@ void NTP_OnEverySecond()
         return;
     }
     if(g_ntp_socket == 0) {
-        // if no socket, this is a reconnect delay
         if(g_ntp_delay > 0) {
             g_ntp_delay--;
             return;
@@ -351,11 +340,9 @@ void NTP_OnEverySecond()
         NTP_SendRequest(false);
     } else {
         NTP_CheckForReceive();
-        // if socket exists, this is a disconnect timeout
         if(g_ntp_delay > 0) {
             g_ntp_delay--;
             if(g_ntp_delay<=0) {
-                // disconnect and force reconnect
                 NTP_Shutdown();
             }
         }
@@ -366,20 +353,16 @@ void NTP_AppendInformationToHTTPIndexPage(http_request_t* request, int bPreState
 {
 	if (bPreState)
 		return;
-/*
-    struct tm *ltm;
-    g_ntpTime=(time_t)TIME_GetCurrentTime();
 
-    ltm = gmtime(&g_ntpTime);
-    if (g_synced == true)
-        hprintf255(request, "<h5>NTP (%s): local Time  %s </h5>",
-			CFG_GetNTPServer(),TS2STR(TIME_GetCurrentTime(),TIME_FORMAT_LONG));
-    else 
+    if (g_synced != true) {
         hprintf255(request, "<h5>NTP: Syncing with %s....</h5>",CFG_GetNTPServer());
-*/
-    //  if NTP is synced, we'll print time with deviceclocks HTTP information
-    if (g_synced != true)
-        hprintf255(request, "<h5>NTP: Syncing with %s....</h5>",CFG_GetNTPServer());
+    } else {
+        if (g_drift_initialized) {
+            hprintf255(request, "<h5>NTP: Synced. Clock Drift: %.4fs (~%.1f PPM)</h5>", g_accumulated_drift_seconds, g_drift_ppm);
+        } else {
+            hprintf255(request, "<h5>NTP: Synced.</h5>");
+        }
+    }
 }
 
 bool NTP_IsTimeSynced()
