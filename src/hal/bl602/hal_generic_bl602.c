@@ -28,7 +28,7 @@ void HAL_Delay_us(int delay)
 void HAL_Configure_WDT()
 {
 #if !PLATFORM_BL_NEW
-	bl_wdt_init(1500);
+	bl_wdt_init(4000);
 #else
 	struct bflb_wdg_config_s wdg_cfg;
 	wdg_cfg.clock_source = WDG_CLKSRC_32K;
