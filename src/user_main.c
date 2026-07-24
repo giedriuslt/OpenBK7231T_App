@@ -500,8 +500,6 @@ const char* CFG_GetWiFiPassX() {
 
 void Main_OnWiFiStatusChange(int code)
 {
-	static int dcount = 0;
-	static uint8_t capcode=0;
 	// careful what you do in here.
 	// e.g. creata socket?  probably not....
 	switch (code)
@@ -512,20 +510,6 @@ void Main_OnWiFiStatusChange(int code)
 		ADDLOGF_INFO("%s - WIFI_STA_CONNECTING - %i", __func__, code);
 		break;
 	case WIFI_STA_DISCONNECTED:
-		HAL_DisconnectFromWifi();
-		dcount++;
-		if (dcount == 5)
-		{
-			dcount =0;
-			uint8_t capcodereal = hal_sys_capcode_get();
-			capcode = capcode+1;
-			if (capcode>63)
-			{
-				capcode = 0;
-			}
-			ADDLOGF_INFO("WiFi capcode setting update: %u before %u", capcode, capcodereal);
-			hal_sys_capcode_update(capcode, capcode);
-		}
 		// try to connect again in few seconds
 		// if we are already disconnected, why must we call disconnect again?
 #if PLATFORM_BEKEN
@@ -975,13 +959,14 @@ void Main_OnEverySecond()
 	}
 
 	{
+		uint8_t capcodereal = hal_sys_capcode_get();
 		//int mqtt_max, mqtt_cur, mqtt_mem;
 		//MQTT_GetStats(&mqtt_cur, &mqtt_max, &mqtt_mem);
 		//ADDLOGF_INFO("mqtt req %i/%i, free mem %i", mqtt_cur,mqtt_max,mqtt_mem);
 #if ENABLE_MQTT
-		ADDLOGF_INFO("%sTime %i, idle %i/s , took %lu, delay %lu, free %d, MQTT %i(%i), Wifi %i, snp %i, socks %i/%i %s",
+		ADDLOGF_INFO("%sTime %i, idle %i/s , took %lu, delay %lu, free %d, MQTT %i(%i), Wifi %i, cap %u, snp %i, socks %i/%i %s",
 			safe, g_secondsElapsed, idleCount, ticksElapsed, ticksbetween, xPortGetFreeHeapSize(), bMQTTconnected,
-			MQTT_GetConnectEvents(),g_bHasWiFiConnected, g_timeSinceLastPingReply, LWIP_GetActiveSockets(), LWIP_GetMaxSockets(),
+			MQTT_GetConnectEvents(),g_bHasWiFiConnected, capcodereal, g_timeSinceLastPingReply, LWIP_GetActiveSockets(), LWIP_GetMaxSockets(),
 			g_powersave ? "POWERSAVE" : "");
 #else
 		ADDLOGF_INFO("%sTime %i, idle %i/s, free %d, bWifi %i, secondsWithNoPing %i, socks %i/%i %s",
