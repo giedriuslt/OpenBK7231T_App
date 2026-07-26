@@ -25,6 +25,7 @@ int cmd_uartInitIndex = 0;
 #include <wifi_mgmr_ext.h>
 #include "bl_flash.h"
 #include "bl602_hbn.h"
+#include "lwip/apps/lwiperf.h"
 #elif PLATFORM_LN882H
 #include <wifi.h>
 #include <power_mgmt/ln_pm.h>
@@ -127,6 +128,15 @@ void LN882H_ApplyPowerSave(int bOn) {
 	}
 }
 #endif
+
+
+static commandResult_t CMD_iPerf(const void* context, const char* cmd, const char* args, int cmdFlags) {
+
+	lwiperf_start_tcp_server_default(NULL, NULL);
+
+	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_iPerf: started ");
+	return CMD_RES_OK;
+}
 
 static commandResult_t CMD_PowerSave(const void* context, const char* cmd, const char* args, int cmdFlags) {
 	int bOn = 1;
@@ -1197,6 +1207,12 @@ void CMD_Init_Early() {
 	//cmddetail:"fn":"CMD_IndexRefreshInterval","file":"cmnds/cmd_main.c","requires":"",
 	//cmddetail:"examples":""}
 	CMD_RegisterCommand("IndexRefreshInterval", CMD_IndexRefreshInterval, NULL);
+	
+	//cmddetail:{"name":"iPerf","args":"",
+	//cmddetail:"descr":"",
+	//cmddetail:"fn":"CMD_iPerf","file":"cmnds/cmd_main.c","requires":"",
+	//cmddetail:"examples":""}
+	CMD_RegisterCommand("iPerf", CMD_iPerf, NULL);
 
 #if MQTT_USE_TLS
 	//cmddetail:{"name":"WebServer","args":"[0 - Stop / 1 - Start]",
