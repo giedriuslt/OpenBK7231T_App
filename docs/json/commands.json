@@ -802,6 +802,15 @@
   },
   {
     "name": "CurrentSet",
+    "args": "TODO",
+    "descr": "",
+    "fn": "BL0939_CalibrateCurrentAB",
+    "file": "driver/drv_bl0939.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "CurrentSet",
     "args": "Current",
     "descr": "Measure the real Current with an external, reliable power meter and enter this Current via this command to calibrate. The calibration is automatically saved in the flash memory.",
     "fn": "CalibrateCurrent",
@@ -1107,6 +1116,96 @@
     "examples": ""
   },
   {
+    "name": "GaitekACFan",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACFan",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACHAMode",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACHAMode",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACMode",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACMode",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACNight",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACNight",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACPower",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACPower",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACPreset",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACPreset",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACPublish",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACPublish",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACRefresh",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACRefresh",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACTemp",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACTemp",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "GaitekACTimer",
+    "args": "TODO",
+    "descr": "",
+    "fn": "CMD_GaitekACTimer",
+    "file": "driver/drv_gaitekAC.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
     "name": "Gen",
     "args": "Gen",
     "descr": "",
@@ -1339,6 +1438,33 @@
     "file": "cmnds/cmd_main.c",
     "requires": "",
     "examples": ""
+  },
+  {
+    "name": "IperfClient",
+    "args": "[TargetIP][OptionalPort][OptionalSeconds][OptionalMode]",
+    "descr": "Starts an iperf2-compatible TCP client that sends data to the given host (default port 5001, default 10 seconds). Run 'iperf -s' (iperf version 2) on the target first. Mode: 0 = TX only (default), 1 = dual, 2 = tradeoff. Results are printed to the console log.",
+    "fn": "CMD_IperfClient",
+    "file": "cmnds/cmd_iperf.c",
+    "requires": "",
+    "examples": "IperfClient 192.168.0.123"
+  },
+  {
+    "name": "IperfServer",
+    "args": "[OptionalPort]",
+    "descr": "Starts an iperf2-compatible TCP server (default port 5001). Test from a PC with 'iperf -c [deviceIP]' (iperf version 2). Results are printed to the console log.",
+    "fn": "CMD_IperfServer",
+    "file": "cmnds/cmd_iperf.c",
+    "requires": "",
+    "examples": "IperfServer"
+  },
+  {
+    "name": "IperfStop",
+    "args": "",
+    "descr": "Stops the running iperf server and/or client sessions.",
+    "fn": "CMD_IperfStop",
+    "file": "cmnds/cmd_iperf.c",
+    "requires": "",
+    "examples": "IperfStop"
   },
   {
     "name": "IRAC",
@@ -2300,6 +2426,15 @@
     "descr": "Extra power save by sleeping during idle. Available on Beken, BL602, XR8xx, Realteks, W600 and W800. Reduces current by 0.001-0.002A on Beken. Enabled by default on BL602/W600/W800 (SDK behaviour).",
     "fn": "CMD_PowerSave_WFI",
     "file": "cmnds/cmd_main.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "PowerSet",
+    "args": "TODO",
+    "descr": "",
+    "fn": "BL0939_CalibratePowerAB",
+    "file": "driver/drv_bl0939.c",
     "requires": "",
     "examples": ""
   },
@@ -4141,6 +4276,15 @@
   },
   {
     "name": "VoltageSet",
+    "args": "TODO",
+    "descr": "",
+    "fn": "BL0939_CalibrateVoltage",
+    "file": "driver/drv_bl0939.c",
+    "requires": "",
+    "examples": ""
+  },
+  {
+    "name": "VoltageSet",
     "args": "Voltage",
     "descr": "Measure the real voltage with an external, reliable power meter and enter this voltage via this command to calibrate. The calibration is automatically saved in the flash memory.",
     "fn": "CalibrateVoltage",
@@ -4183,5 +4327,23 @@
     "file": "driver/drv_widget.c",
     "requires": "",
     "examples": ""
+  },
+  {
+    "name": "WifiTxStats",
+    "args": "[OptionalIntervalSeconds]",
+    "descr": "BL602 only - prints WiFi TX confirmation counters (frames sent OK, frames that needed retries, frames that hit the MAC retry limit, requeued/dropped frames) plus RSSI and channel. A stream of retryLimit events under load indicates a bad RF link. With an argument, also logs the stats every N seconds (0 disables periodic logging).",
+    "fn": "CMD_WifiTxStats",
+    "file": "cmnds/cmd_bl602_txstats.c",
+    "requires": "",
+    "examples": "WifiTxStats 1"
+  },
+  {
+    "name": "WifiTxStatsReset",
+    "args": "",
+    "descr": "BL602 only - resets the WiFi TX confirmation counters shown by WifiTxStats.",
+    "fn": "CMD_WifiTxStatsReset",
+    "file": "cmnds/cmd_bl602_txstats.c",
+    "requires": "",
+    "examples": "WifiTxStatsReset"
   }
 ]

@@ -317,6 +317,11 @@ void CMD_InitChannelCommands();
 int CMD_InitSendCommands();
 // cmd_tcp.c
 void CMD_StartTCPCommandLine();
+// cmd_iperf.c
+void CMD_InitIperf();
+// cmd_bl602_txstats.c
+void BL602TX_AddCommands();
+void BL602TX_OnEverySecond();
 // cmd_script.c
 int CMD_GetCountActiveScriptThreads();
 // cmd_berry.c

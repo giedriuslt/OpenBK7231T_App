@@ -251,8 +251,14 @@
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_DRIVER_SM16703P					1
 #define ENABLE_DRIVER_PIXELANIM					1
+// iperf2-compatible TCP throughput test commands (IperfServer/IperfClient/IperfStop)
+#define ENABLE_IPERF							1
 #if PLATFORM_BL_NEW
 #define NEW_TCP_SERVER							1
+#else
+// WiFi TX confirmation counters (WifiTxStats command), needs the bl_tx.c
+// override applied by platforms/BL602/pre_build.sh - classic SDK only
+#define ENABLE_BL602_TXSTATS					1
 #endif
 
 #if (OBK_VARIANT == OBK_VARIANT_BERRY)

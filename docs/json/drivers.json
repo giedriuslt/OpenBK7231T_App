@@ -629,6 +629,12 @@
     "define": "Enabled by defining \"<b>ENABLE_DRIVER_UART_TCP</b>\" for your platform in [obk_config.h](https://github.com/openshwprojects/OpenBK7231T_App/blob/main/src/obk_config.h) "
   },
   {
+    "name": "GaitekAC",
+    "title": "GaitekAC",
+    "descr": "TODO",
+    "requires": ""
+  },
+  {
     "name": "TXWCAM",
     "title": "TODO",
     "descr": "TXW81X Camera.",
