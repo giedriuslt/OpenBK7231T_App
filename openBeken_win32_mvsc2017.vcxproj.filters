@@ -17,6 +17,9 @@
     <ClCompile Include="src\selftest\selftest_enums.c" />
     <ClCompile Include="src\cmnds\cmd_eventHandlers.c" />
     <ClCompile Include="src\cmnds\cmd_if.c" />
+    <ClCompile Include="src\cmnds\cmd_bl602_txstats.c" />
+    <ClCompile Include="src\cmnds\cmd_iperf.c" />
+    <ClCompile Include="src\cmnds\cmd_iperf_lwiperf.c" />
     <ClCompile Include="src\cmnds\cmd_main.c" />
     <ClCompile Include="src\cmnds\cmd_newLEDDriver.c" />
     <ClCompile Include="src\cmnds\cmd_newLEDDriver_colors.c" />

@@ -132,6 +132,16 @@ Do not add anything here, as it will overwritten with next rebuild.
 | <b>flags</b> | [IntegerValue] | Sets the device flags.<br/><br/>See also [flags on forum](https://www.elektroda.com/rtvforum/find.php?q=flags). |
 | <b>FriendlyName</b> | [Name] | Sets the full name of the device.<br/><br/>See also [FriendlyName on forum](https://www.elektroda.com/rtvforum/find.php?q=FriendlyName). |
 | <b>FullBootTime</b> | [Value] | Sets time in seconds after which boot is marked as valid. This is related to emergency AP mode which is enabled by powering on/off device 5 times quickly.<br/><br/>See also [FullBootTime on forum](https://www.elektroda.com/rtvforum/find.php?q=FullBootTime). |
+| <b>GaitekACFan</b> | TODO | <br/><br/>See also [GaitekACFan on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACFan). |
+| <b>GaitekACHAMode</b> | TODO | <br/><br/>See also [GaitekACHAMode on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACHAMode). |
+| <b>GaitekACMode</b> | TODO | <br/><br/>See also [GaitekACMode on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACMode). |
+| <b>GaitekACNight</b> | TODO | <br/><br/>See also [GaitekACNight on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACNight). |
+| <b>GaitekACPower</b> | TODO | <br/><br/>See also [GaitekACPower on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACPower). |
+| <b>GaitekACPreset</b> | TODO | <br/><br/>See also [GaitekACPreset on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACPreset). |
+| <b>GaitekACPublish</b> | TODO | <br/><br/>See also [GaitekACPublish on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACPublish). |
+| <b>GaitekACRefresh</b> | TODO | <br/><br/>See also [GaitekACRefresh on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACRefresh). |
+| <b>GaitekACTemp</b> | TODO | <br/><br/>See also [GaitekACTemp on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACTemp). |
+| <b>GaitekACTimer</b> | TODO | <br/><br/>See also [GaitekACTimer on forum](https://www.elektroda.com/rtvforum/find.php?q=GaitekACTimer). |
 | <b>Gen</b> | Gen | <br/><br/>See also [Gen on forum](https://www.elektroda.com/rtvforum/find.php?q=Gen). |
 | <b>GetChannel</b> | [ChannelIndex] | Prints given channel value to console.<br/><br/>See also [GetChannel on forum](https://www.elektroda.com/rtvforum/find.php?q=GetChannel). |
 | <b>getPin</b> | string | Find pin index for a pin alias.<br/><br/>See also [getPin on forum](https://www.elektroda.com/rtvforum/find.php?q=getPin). |
@@ -158,6 +168,9 @@ Do not add anything here, as it will overwritten with next rebuild.
 | <b>HT16K33_Test</b> | HT16K33_Test | <br/><br/>See also [HT16K33_Test on forum](https://www.elektroda.com/rtvforum/find.php?q=HT16K33_Test). |
 | <b>if</b> | [Condition]['then'][CommandA]['else'][CommandB] | Executed a conditional. Condition should be single line. You must always use 'then' after condition. 'else' is optional. Use aliases or quotes for commands with spaces.<br/><br/>See also [if on forum](https://www.elektroda.com/rtvforum/find.php?q=if). |
 | <b>IndexRefreshInterval</b> | [Interval] | <br/><br/>See also [IndexRefreshInterval on forum](https://www.elektroda.com/rtvforum/find.php?q=IndexRefreshInterval). |
+| <b>IperfClient</b> | [TargetIP][OptionalPort][OptionalSeconds][OptionalMode] | Starts an iperf2-compatible TCP client that sends data to the given host (default port 5001, default 10 seconds). Run 'iperf -s' (iperf version 2) on the target first. Mode: 0 = TX only (default), 1 = dual, 2 = tradeoff. Results are printed to the console log.<br/><br/>Example: IperfClient 192.168.0.123<br/><br/>See also [IperfClient on forum](https://www.elektroda.com/rtvforum/find.php?q=IperfClient). |
+| <b>IperfServer</b> | [OptionalPort] | Starts an iperf2-compatible TCP server (default port 5001). Test from a PC with 'iperf -c [deviceIP]' (iperf version 2). Results are printed to the console log.<br/><br/>Example: IperfServer<br/><br/>See also [IperfServer on forum](https://www.elektroda.com/rtvforum/find.php?q=IperfServer). |
+| <b>IperfStop</b> |  | Stops the running iperf server and/or client sessions.<br/><br/>Example: IperfStop<br/><br/>See also [IperfStop on forum](https://www.elektroda.com/rtvforum/find.php?q=IperfStop). |
 | <b>IRAC</b><span style="font-size:0.8em;"><br/>with <i>ENABLE_DRIVER_IRREMOTEESP</i><br/>(IRremoteESP8266)</span> | [TODO] | Sends IR commands for HVAC control (TODO).<br/><br/>See also [IRAC on forum](https://www.elektroda.com/rtvforum/find.php?q=IRAC). |
 | <b>IREnable</b><span style="font-size:0.8em;"><br/>with <i>ENABLE_DRIVER_IR</i><br/>(Arduino-IRremote)</span> | [Str][1or0] | Enable/disable aspects of IR.  IREnable RXTX 0/1 - enable Rx whilst Tx.  IREnable [protocolname] 0/1 - enable/disable a specified protocol.<br/><br/>See also [IREnable on forum](https://www.elektroda.com/rtvforum/find.php?q=IREnable). |
 | <b>IREnable</b><span style="font-size:0.8em;"><br/>with <i>ENABLE_DRIVER_IRREMOTEESP</i><br/>(IRremoteESP8266)</span> | [Str][1or0] | Enable/disable aspects of IR.  IREnable RXTX 0/1 - enable Rx whilst Tx.  IREnable [protocolname] 0/1 - enable/disable a specified protocol.<br/><br/>See also [IREnable on forum](https://www.elektroda.com/rtvforum/find.php?q=IREnable). |
@@ -476,4 +489,6 @@ Do not add anything here, as it will overwritten with next rebuild.
 | <b>WebServer</b> | [0 - Stop / 1 - Start] | Setting state of WebServer.<br/><br/>See also [WebServer on forum](https://www.elektroda.com/rtvforum/find.php?q=WebServer). |
 | <b>widget_clearAll</b> |  | Removes all registered widgets.<br/><br/>See also [widget_clearAll on forum](https://www.elektroda.com/rtvforum/find.php?q=widget_clearAll). |
 | <b>widget_create</b> | [LocationIndex][bAllowCache][FileName] | <br/><br/>See also [widget_create on forum](https://www.elektroda.com/rtvforum/find.php?q=widget_create). |
+| <b>WifiTxStats</b> | [OptionalIntervalSeconds] | BL602 only - prints WiFi TX confirmation counters (frames sent OK, frames that needed retries, frames that hit the MAC retry limit, requeued/dropped frames) plus RSSI and channel. A stream of retryLimit events under load indicates a bad RF link. With an argument, also logs the stats every N seconds (0 disables periodic logging).<br/><br/>Example: WifiTxStats 1<br/><br/>See also [WifiTxStats on forum](https://www.elektroda.com/rtvforum/find.php?q=WifiTxStats). |
+| <b>WifiTxStatsReset</b> |  | BL602 only - resets the WiFi TX confirmation counters shown by WifiTxStats.<br/><br/>Example: WifiTxStatsReset<br/><br/>See also [WifiTxStatsReset on forum](https://www.elektroda.com/rtvforum/find.php?q=WifiTxStatsReset). |
 

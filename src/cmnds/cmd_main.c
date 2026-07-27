@@ -1243,6 +1243,12 @@ void CMD_Init_Delayed() {
 		CMD_StartTCPCommandLine();
 	}
 #endif
+#if ENABLE_IPERF
+	CMD_InitIperf();
+#endif
+#if ENABLE_BL602_TXSTATS
+	BL602TX_AddCommands();
+#endif
 #if PLATFORM_BEKEN || WINDOWS || PLATFORM_BL602 || PLATFORM_ESPIDF || PLATFORM_ESP8266 \
 	|| PLATFORM_REALTEK || PLATFORM_ECR6600 || PLATFORM_XRADIO
 	UART_AddCommands();

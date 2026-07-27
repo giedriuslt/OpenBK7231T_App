@@ -37,6 +37,20 @@
 #
 # patch -p 1 -d sdk/OpenBL602 < platforms/BL602/my_change.diff
 
+# copy all files from the "override" directory to their corresponding
+# location inside the SDK (paths inside "override" start with sdk/OpenBL602/...)
+# allow whitespace in file or path, so take only newline as seperator
+OFS=$IFS
+IFS='
+'
+for X in $(find platforms/BL602/override/ -type f);do
+	S=${X};
+	D=${X#platforms/BL602/override/};
+	[ -e $D ] && echo "PREBUILD BL602: replacing file $D" || echo "PREBUILD BL602: adding file $D"
+	cp $S $D;
+done
+IFS=$OFS
+
 LWIP_MK="sdk/OpenBL602/components/network/lwip/bouffalo.mk"
 
 if [ -f "$LWIP_MK" ]; then

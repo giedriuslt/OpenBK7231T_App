@@ -841,6 +841,9 @@ void Main_OnEverySecond()
 #if ENABLE_LED_BASIC
 	LED_RunOnEverySecond();
 #endif
+#if ENABLE_BL602_TXSTATS
+	BL602TX_OnEverySecond();
+#endif
 #ifndef OBK_DISABLE_ALL_DRIVERS
 	DRV_OnEverySecond();
 #if defined(PLATFORM_BEKEN) || defined(WINDOWS) || defined(PLATFORM_BL602) || defined(PLATFORM_ESPIDF) \

@@ -8,7 +8,10 @@ set(OBKM_SRC
 	${OBK_SRCS}cmnds/cmd_channels.c
 	${OBK_SRCS}cmnds/cmd_enums.c
 	${OBK_SRCS}cmnds/cmd_eventHandlers.c
+	${OBK_SRCS}cmnds/cmd_bl602_txstats.c
 	${OBK_SRCS}cmnds/cmd_if.c
+	${OBK_SRCS}cmnds/cmd_iperf.c
+	${OBK_SRCS}cmnds/cmd_iperf_lwiperf.c
 	${OBK_SRCS}cmnds/cmd_main.c
 	${OBK_SRCS}cmnds/cmd_newLEDDriver_colors.c
 	${OBK_SRCS}cmnds/cmd_newLEDDriver.c
