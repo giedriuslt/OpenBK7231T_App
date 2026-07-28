@@ -56,6 +56,9 @@ typedef struct http_request_tag {
 	int replylen;
 	int replymaxlen;
 	int fd;
+	// set when a send failed fatally (peer gone); the rest of the reply
+	// is dropped instead of failing send-by-send
+	int connectionDead;
 
 	// user variables used to build JSON data
 	int userCounter;

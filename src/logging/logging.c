@@ -979,7 +979,12 @@ static int http_getlograw(http_request_t* request) {
 		len = getHttp(buf, sizeof(buf) - 1);
 		buf[len] = '\0';
 		if (len) {
-			poststr(request, buf);
+			if (poststr(request, buf) < 0) {
+				// connection died; anything logged from now on (including
+				// the send failure itself) refills the buffer we are
+				// draining - bail out instead of looping forever
+				break;
+			}
 		}
 	} while (len);
 	poststr(request, NULL);
