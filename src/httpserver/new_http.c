@@ -12,6 +12,11 @@
 #include "../base64/base64.h"
 #include "http_basic_auth.h"
 
+#if PLATFORM_BL602 || PLATFORM_BEKEN_NEW || PLATFORM_RTL8720D
+// errno + lwip error codes for the postany send path
+#include "lwip/sockets.h"
+#endif
+
 // define the feature ADDLOGF_XXX will use
 #define LOG_FEATURE LOG_FEATURE_HTTP
 
@@ -678,7 +683,27 @@ void setupAllWB2SPinsAsButtons()
 int postany(http_request_t *request, const char *str, int len)
 {
 #if PLATFORM_BL602 || PLATFORM_BEKEN_NEW || PLATFORM_RTL8720D
-	send(request->fd, str, len, 0);
+	int attempts = 0;
+
+	if (request->connectionDead) {
+		return -1;
+	}
+	while (send(request->fd, str, len, 0) < 0) {
+		// out-of-buffer conditions can clear up - worth a bounded retry
+		if ((errno == EWOULDBLOCK || errno == ENOMEM || errno == ENOBUFS)
+				&& ++attempts <= 20) {
+			rtos_delay_milliseconds(10);
+			continue;
+		}
+		// anything else (ENOTCONN, ECONNRESET, ...) means the connection
+		// is gone and no retry can ever succeed. Mark the request dead so
+		// the rest of the page render short-circuits instead of failing
+		// call by call. No ADDLOG here: the log console paths send over
+		// the network and would feed back into postany (http_getlograw).
+		request->connectionDead = true;
+		bk_printf("postany: send err %i, dropping rest of reply\r\n", errno);
+		return -1;
+	}
 	return 0;
 #else
 	int currentlen;
