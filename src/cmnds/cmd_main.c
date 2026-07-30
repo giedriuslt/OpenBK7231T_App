@@ -130,6 +130,27 @@ void LN882H_ApplyPowerSave(int bOn) {
 #endif
 
 
+static commandResult_t CMD_RateLimit(const void* context, const char* cmd, const char* args, int cmdFlags) {
+
+	uint8_t lmcs =0;
+	uint8_t l11g = 0;
+	int ress = 0;
+	Tokenizer_TokenizeString(args, 0);
+	// following check must be done after 'Tokenizer_TokenizeString',
+	// so we know arguments count in Tokenizer. 'cmd' argument is
+	// only for warning display
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 2)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
+
+	lmcs = (uint8_t)Tokenizer_GetArgInteger(0);
+	l11g = (uint8_t)Tokenizer_GetArgInteger(1);
+	ress = wifi_mgmr_rate_limit(lmcs, l11g);
+
+	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_RateLimit: %u, %u, ress %i ", lmcs, l11g, ress);
+	return CMD_RES_OK;
+}
+
 static commandResult_t CMD_iPerf(const void* context, const char* cmd, const char* args, int cmdFlags) {
 
 	lwiperf_start_tcp_server_default(NULL, NULL);
@@ -1207,6 +1228,12 @@ void CMD_Init_Early() {
 	//cmddetail:"fn":"CMD_IndexRefreshInterval","file":"cmnds/cmd_main.c","requires":"",
 	//cmddetail:"examples":""}
 	CMD_RegisterCommand("IndexRefreshInterval", CMD_IndexRefreshInterval, NULL);
+
+	//cmddetail:{"name":"RateLimit","args":"[mcs][g11]",
+	//cmddetail:"descr":"",
+	//cmddetail:"fn":"CMD_RateLimit","file":"cmnds/cmd_main.c","requires":"",
+	//cmddetail:"examples":""}
+	CMD_RegisterCommand("RateLimit", CMD_RateLimit, NULL);
 	
 	//cmddetail:{"name":"iPerf","args":"",
 	//cmddetail:"descr":"",
