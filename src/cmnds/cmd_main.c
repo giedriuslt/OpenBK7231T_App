@@ -130,6 +130,25 @@ void LN882H_ApplyPowerSave(int bOn) {
 #endif
 
 
+static commandResult_t CMD_RateSet(const void* context, const char* cmd, const char* args, int cmdFlags) {
+
+	uint8_t lmcs =0;
+	int ress = 0;
+	Tokenizer_TokenizeString(args, 0);
+	// following check must be done after 'Tokenizer_TokenizeString',
+	// so we know arguments count in Tokenizer. 'cmd' argument is
+	// only for warning display
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
+
+	lmcs = (uint8_t)Tokenizer_GetArgInteger(0);
+	wifi_mgmr_rate_config((1 << 12) | lmcs);
+
+	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_RateSet: %u, ress %i ", lmcs, ress);
+	return CMD_RES_OK;
+}
+
 static commandResult_t CMD_RateLimit(const void* context, const char* cmd, const char* args, int cmdFlags) {
 
 	uint8_t lmcs =0;
@@ -1229,6 +1248,12 @@ void CMD_Init_Early() {
 	//cmddetail:"examples":""}
 	CMD_RegisterCommand("IndexRefreshInterval", CMD_IndexRefreshInterval, NULL);
 
+	//cmddetail:{"name":"RateSet","args":"[mcs]",
+	//cmddetail:"descr":"",
+	//cmddetail:"fn":"CMD_RateSet","file":"cmnds/cmd_main.c","requires":"",
+	//cmddetail:"examples":""}
+	CMD_RegisterCommand("RateSet", CMD_RateSet, NULL);
+	
 	//cmddetail:{"name":"RateLimit","args":"[mcs][g11]",
 	//cmddetail:"descr":"",
 	//cmddetail:"fn":"CMD_RateLimit","file":"cmnds/cmd_main.c","requires":"",
