@@ -132,20 +132,28 @@ void LN882H_ApplyPowerSave(int bOn) {
 
 static commandResult_t CMD_RateSet(const void* context, const char* cmd, const char* args, int cmdFlags) {
 
-	uint8_t lmcs =0;
+	uint8_t ltype=0;
+	uint8_t limit =0;
 	int ress = 0;
 	Tokenizer_TokenizeString(args, 0);
 	// following check must be done after 'Tokenizer_TokenizeString',
 	// so we know arguments count in Tokenizer. 'cmd' argument is
 	// only for warning display
-	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 2)) {
 		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
 	}
+	ltype = (uint8_t)Tokenizer_GetArgInteger(0);
 
-	lmcs = (uint8_t)Tokenizer_GetArgInteger(0);
-	wifi_mgmr_rate_config((1 << 12) | lmcs);
+	limit = (uint8_t)Tokenizer_GetArgInteger(1);
+	if (ltype== 1){
+	
+		ress = wifi_mgmr_rate_config((1 << 12) | limit);
+	}
+	else {
+		ress = wifi_mgmr_rate_config((1 << 10) | (1 << 9) | limit);
+	}
 
-	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_RateSet: %u, ress %i ", lmcs, ress);
+	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_RateSet: %u, %u, ress %i ", ltype, limit, ress);
 	return CMD_RES_OK;
 }
 
