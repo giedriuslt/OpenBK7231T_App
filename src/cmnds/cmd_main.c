@@ -130,6 +130,15 @@ void LN882H_ApplyPowerSave(int bOn) {
 #endif
 
 
+//int wifi_mgmr_rc_stats_dump(void);
+
+static commandResult_t CMD_WifiStatsDump(const void* context, const char* cmd, const char* args, int cmdFlags) {
+
+	wifi_mgmr_rc_stats_dump();
+	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_WifiStatsDump");
+	return CMD_RES_OK;
+}
+
 static commandResult_t CMD_RateSet(const void* context, const char* cmd, const char* args, int cmdFlags) {
 
 	uint8_t ltype=0;
@@ -1256,11 +1265,11 @@ void CMD_Init_Early() {
 	//cmddetail:"examples":""}
 	CMD_RegisterCommand("IndexRefreshInterval", CMD_IndexRefreshInterval, NULL);
 
-	//cmddetail:{"name":"RateSet","args":"[mcs]",
+	//cmddetail:{"name":"WifiStatsDump","args":"",
 	//cmddetail:"descr":"",
-	//cmddetail:"fn":"CMD_RateSet","file":"cmnds/cmd_main.c","requires":"",
+	//cmddetail:"fn":"CMD_WifiStatsDump","file":"cmnds/cmd_main.c","requires":"",
 	//cmddetail:"examples":""}
-	CMD_RegisterCommand("RateSet", CMD_RateSet, NULL);
+	CMD_RegisterCommand("WifiStatsDump", CMD_WifiStatsDump, NULL);
 	
 	//cmddetail:{"name":"RateLimit","args":"[mcs][g11]",
 	//cmddetail:"descr":"",
