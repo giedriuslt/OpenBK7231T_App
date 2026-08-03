@@ -155,6 +155,8 @@ static SemaphoreHandle_t g_mutex = 0;
 static bool MQTT_Mutex_Take(int del) {
 	int taken;
 
+	// lazy-create kept as a fallback; the mutex is normally created
+	// in MQTT_init before any second thread can touch it
 	if (g_mutex == 0)
 	{
 		g_mutex = xSemaphoreCreateMutex();
@@ -178,7 +180,13 @@ static void MQTT_Mutex_Free()
 // system can use it to spoof MQTT packets to check if MQTT commands
 // are working...
 int MQTT_Post_Received(const char *topic, int topiclen, const unsigned char *data, int datalen){
-	MQTT_Mutex_Take(100);
+	// giving the mutex without holding it trips a FreeRTOS
+	// configASSERT in xTaskPriorityDisinherit, so we must drop
+	// the packet if the take times out
+	if (!MQTT_Mutex_Take(100)) {
+		addLogAdv(LOG_ERROR, LOG_FEATURE_MQTT, "MQTT_rx mutex timeout, dropping topic %s", topic);
+		return 0;
+	}
 	if ((MQTT_RX_BUFFER_MAX - 1 - mqtt_rx_buffer_count) < topiclen + datalen + 2 + 2){
 		addLogAdv(LOG_ERROR, LOG_FEATURE_MQTT, "MQTT_rx buffer overflow for topic %s", topic);
 	} else {
@@ -198,7 +206,10 @@ int MQTT_Post_Received_Str(const char *topic, const char *data) {
 }
 int get_received(char **topic, int *topiclen, unsigned char **data, int *datalen){
 	int res = 0;
-	MQTT_Mutex_Take(100);
+	// mutex may be held by a publisher for a while - just try again on the next tick
+	if (!MQTT_Mutex_Take(100)) {
+		return 0;
+	}
 	if (mqtt_rx_buffer_tail != mqtt_rx_buffer_head){
 		getLenData(topiclen, temp_topic, sizeof(temp_topic)-1);
 		temp_topic[*topiclen] = 0;
@@ -1946,6 +1957,13 @@ void MQTT_init()
 #ifdef WINDOWS
 	mqtt_client = 0;
 #endif
+
+	// create the RX buffer mutex here, before both threads that use it exist -
+	// the lazy creation inside MQTT_Mutex_Take is racy if two threads hit it first
+	if (g_mutex == 0)
+	{
+		g_mutex = xSemaphoreCreateMutex();
+	}
 
 	MQTT_InitCallbacks();
 
