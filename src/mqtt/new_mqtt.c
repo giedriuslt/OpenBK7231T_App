@@ -150,7 +150,15 @@ int getLenData(int *len, unsigned char *data, int maxlen){
 	return l + 2;
 }
 
+// g_mutex guards the client connect/disconnect/publish state. Its holders
+// take LOCK_TCPIP_CORE while holding it, so it must NEVER be taken from
+// tcp_thread context (which already holds the core lock) - that is a lock
+// order inversion, see g_rx_mutex below.
 static SemaphoreHandle_t g_mutex = 0;
+// g_rx_mutex guards only the mqtt_rx_buffer ring (head/tail/count). It is
+// a leaf lock: holders must not take any other lock, so it is safe to take
+// from tcp_thread while the TCPIP core lock is held.
+static SemaphoreHandle_t g_rx_mutex = 0;
 
 static bool MQTT_Mutex_Take(int del) {
 	int taken;
@@ -173,6 +181,25 @@ static void MQTT_Mutex_Free()
 	xSemaphoreGive(g_mutex);
 }
 
+static bool MQTT_RxMutex_Take(int del) {
+	int taken;
+
+	if (g_rx_mutex == 0)
+	{
+		g_rx_mutex = xSemaphoreCreateMutex();
+	}
+	taken = xSemaphoreTake(g_rx_mutex, del);
+	if (taken == pdTRUE) {
+		return true;
+	}
+	return false;
+}
+
+static void MQTT_RxMutex_Free()
+{
+	xSemaphoreGive(g_rx_mutex);
+}
+
 // this is called from tcp_thread context to queue received mqtt,
 // and then we'll retrieve them from our own thread for processing.
 //
@@ -183,7 +210,7 @@ int MQTT_Post_Received(const char *topic, int topiclen, const unsigned char *dat
 	// giving the mutex without holding it trips a FreeRTOS
 	// configASSERT in xTaskPriorityDisinherit, so we must drop
 	// the packet if the take times out
-	if (!MQTT_Mutex_Take(100)) {
+	if (!MQTT_RxMutex_Take(100)) {
 		addLogAdv(LOG_ERROR, LOG_FEATURE_MQTT, "MQTT_rx mutex timeout, dropping topic %s", topic);
 		return 0;
 	}
@@ -193,7 +220,7 @@ int MQTT_Post_Received(const char *topic, int topiclen, const unsigned char *dat
 		addLenData(topiclen, (unsigned char *)topic);
 		addLenData(datalen, data);
 	}
-	MQTT_Mutex_Free();
+	MQTT_RxMutex_Free();
 
 
 #ifdef PLATFORM_BEKEN
@@ -206,8 +233,7 @@ int MQTT_Post_Received_Str(const char *topic, const char *data) {
 }
 int get_received(char **topic, int *topiclen, unsigned char **data, int *datalen){
 	int res = 0;
-	// mutex may be held by a publisher for a while - just try again on the next tick
-	if (!MQTT_Mutex_Take(100)) {
+	if (!MQTT_RxMutex_Take(100)) {
 		return 0;
 	}
 	if (mqtt_rx_buffer_tail != mqtt_rx_buffer_head){
@@ -219,7 +245,7 @@ int get_received(char **topic, int *topiclen, unsigned char **data, int *datalen
 		*data = temp_data;
 		res = 1;
 	}
-	MQTT_Mutex_Free();
+	MQTT_RxMutex_Free();
 	return res;
 }
 //
@@ -1958,11 +1984,15 @@ void MQTT_init()
 	mqtt_client = 0;
 #endif
 
-	// create the RX buffer mutex here, before both threads that use it exist -
-	// the lazy creation inside MQTT_Mutex_Take is racy if two threads hit it first
+	// create the mutexes here, before both threads that use them exist -
+	// the lazy creation inside the take helpers is racy if two threads hit it first
 	if (g_mutex == 0)
 	{
 		g_mutex = xSemaphoreCreateMutex();
+	}
+	if (g_rx_mutex == 0)
+	{
+		g_rx_mutex = xSemaphoreCreateMutex();
 	}
 
 	MQTT_InitCallbacks();
