@@ -1271,6 +1271,12 @@ void CMD_Init_Early() {
 	//cmddetail:"examples":""}
 	CMD_RegisterCommand("WifiStatsDump", CMD_WifiStatsDump, NULL);
 	
+	//cmddetail:{"name":"RateSet","args":"[mcs][g11]",
+	//cmddetail:"descr":"",
+	//cmddetail:"fn":"CMD_RateSet","file":"cmnds/cmd_main.c","requires":"",
+	//cmddetail:"examples":""}
+	CMD_RegisterCommand("RateSet", CMD_RateSet, NULL);
+	
 	//cmddetail:{"name":"RateLimit","args":"[mcs][g11]",
 	//cmddetail:"descr":"",
 	//cmddetail:"fn":"CMD_RateLimit","file":"cmnds/cmd_main.c","requires":"",
