@@ -129,6 +129,39 @@ void LN882H_ApplyPowerSave(int bOn) {
 }
 #endif
 
+/*
+static void wifi_rc_retry_cmd(char *buf, int len, int argc, char **argv)
+{
+    if (argc != 2) {
+        bl_os_printf("rc_retry [4-32|0] - MAC retry attempts per frame (0 = fw default 7/4)\r\n");
+        return;
+    }
+    if (wifi_mgmr_rate_limit_retry_budget(atoi(argv[1]))) {
+        bl_os_printf("rc_retry: bad argument or not supported\r\n");
+    } else {
+        bl_os_printf("retry budget set to %d\r\n", atoi(argv[1]));
+    }
+}
+*/
+static commandResult_t CMD_RcLimit(const void* context, const char* cmd, const char* args, int cmdFlags) {
+
+	uint8_t limit =0;
+	int ress = 0;
+	Tokenizer_TokenizeString(args, 0);
+	// following check must be done after 'Tokenizer_TokenizeString',
+	// so we know arguments count in Tokenizer. 'cmd' argument is
+	// only for warning display
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
+	limit = (uint8_t)Tokenizer_GetArgInteger(0);
+
+	ress = wifi_mgmr_rate_limit_retry_budget(limit);
+
+
+	ADDLOG_INFO(LOG_FEATURE_CMD, "CMD_RcLimit: limit: %u, , res %i ", limit, ress);
+	return CMD_RES_OK;
+}
 
 //int wifi_mgmr_rc_stats_dump(void);
 
@@ -1264,6 +1297,13 @@ void CMD_Init_Early() {
 	//cmddetail:"fn":"CMD_IndexRefreshInterval","file":"cmnds/cmd_main.c","requires":"",
 	//cmddetail:"examples":""}
 	CMD_RegisterCommand("IndexRefreshInterval", CMD_IndexRefreshInterval, NULL);
+
+//CMD_RcLimit
+	//cmddetail:{"name":"RcLimit","args":"[limit]",
+	//cmddetail:"descr":"",
+	//cmddetail:"fn":"CMD_RcLimit","file":"cmnds/cmd_main.c","requires":"",
+	//cmddetail:"examples":""}
+	CMD_RegisterCommand("RcLimit", CMD_RcLimit, NULL);
 
 	//cmddetail:{"name":"WifiStatsDump","args":"",
 	//cmddetail:"descr":"",
