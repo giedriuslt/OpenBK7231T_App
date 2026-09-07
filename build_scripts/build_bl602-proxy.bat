@@ -1,4 +1,4 @@
-::@echo off
+@echo off
 setlocal EnableDelayedExpansion
 pushd "%~dp0\.."
 
@@ -10,7 +10,7 @@ pushd "%~dp0\.."
 set APP_NAME=OpenBL602_App
 set APP_VERSION=dev_bl602
 set SDK_DIR=sdk\OpenBL602
-set OBK_VARIANT=0
+set OBK_VARIANT=1
 set ACTION=build
 
 :: Allow overriding version from command line
@@ -124,10 +124,8 @@ echo #!/bin/bash> "%TEMP%\python3"
 echo "!WIN_PYTHON_PATH_CYG!" "$@">> "%TEMP%\python3"
 "%GIT_BASH%" --login -c "chmod +x $(cygpath -u '%TEMP%\python3')"
 
-:: cp -r ./src sdk/OpenBL602/customer_app/bl602_sharedApp\bl602_sharedApp\shared
-
 :: Run make via Git bash, explicitly injecting TMP vars as make arguments to appease the GNU assembler
-"%GIT_BASH%" --login -c "export LOCAL_TMP=$(cygpath -m '%USERPROFILE%\AppData\Local\Temp'); cd sdk/OpenBL602/customer_app/bl602_sharedApp;  make CONFIG_CHIP_NAME=BL602 CONFIG_LINK_ROM=1 APP_VERSION=%APP_VERSION% OBK_VARIANT=%OBK_VARIANT% TEMP=\"$LOCAL_TMP\" TMP=\"$LOCAL_TMP\" TMPDIR=\"$LOCAL_TMP\" "
+"%GIT_BASH%" --login -c "export LOCAL_TMP=$(cygpath -m '%USERPROFILE%\AppData\Local\Temp'); cd sdk/OpenBL602/customer_app/bl602_demo_wifi;  make CONFIG_CHIP_NAME=BL602 CONFIG_LINK_ROM=1 APP_VERSION=%APP_VERSION% OBK_VARIANT=%OBK_VARIANT% TEMP=\"$LOCAL_TMP\" TMP=\"$LOCAL_TMP\" TMPDIR=\"$LOCAL_TMP\" "
 set BUILD_RESULT=!errorlevel!
 :: Ignore exit code if the root .bin was generated successfully (indicating only the Python OTA step failed in bash)
 if exist "%SDK_DIR%\customer_app\bl602_sharedApp\build_out\bl602_sharedApp.bin" (
