@@ -59,6 +59,7 @@ extern void WFI(void);
 #include <hal_sys.h>
 #include <hosal_adc.h>
 #include <bl_wdt.h>
+#include <soft_wdt.h>
 #elif PLATFORM_W600 || PLATFORM_W800
 #include "wm_watchdog.h"
 #elif PLATFORM_LN882H
@@ -1131,6 +1132,7 @@ void Main_OnEverySecond()
 	}
 #endif
 	HAL_Run_WDT();
+	watchdog_kick();
 	
 	ticksElapsed = (xTaskGetTickCount() - startTick);
 	// force it to sleep...  we MUST have some idle task processing
@@ -1683,6 +1685,11 @@ void Main_Init_After_Delay()
 	if (g_log2lfs > 0) initLog2LFS();
 //	bk_printf("g_log2lfs=%i\r\n", g_log2lfs);
 #endif
+	}
+	if (!bSafeMode){
+		    char crash_report[96];
+    bool had_crash = read_crash_log_on_boot(crash_report, sizeof(crash_report));
+		watchdog_timer_init(3000);
 	}
 
 	ADDLOGF_INFO("%s done", __func__);

@@ -33,6 +33,7 @@
 #include <bl_adc.h>     //  For BL602 ADC HAL
 #include <bl602_adc.h>  //  For BL602 ADC Standard Driver
 #include <bl602_glb.h>  //  For BL602 Global Register Standard Driver
+#include <../soft_wdt.h>
 #include <wifi_mgmr_ext.h> //For BL602 WiFi AP Scan
 #elif PLATFORM_W600 || PLATFORM_W800
 
@@ -936,6 +937,8 @@ int http_fn_index(http_request_t* request) {
   // only in Normal mode, and if boot is not failing
 #ifndef NO_CHIP_TEMPERATURE
 	hprintf255(request, "<h5>Chip temperature: %.1f°C</h5>", g_wifi_temperature);
+	crash_log_dump_flash_history(tmpA, sizeof(tmpA));
+	hprintf255(request, "<h5>Crash diag: %s</h5>", tmpA);
 #endif
 
 #if ENABLE_PING_WATCHDOG
