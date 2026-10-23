@@ -1807,6 +1807,8 @@ void DRV_OnHassDiscovery(const char *topic) {
 	DRV_Mutex_Free();
 
 }
+
+extern uint32_t GetRetramValue();
 void DRV_AppendInformationToHTTPIndexPage(http_request_t* request, int bPreState) {
 	int i, j;
 	int c_active = 0;
@@ -1826,7 +1828,7 @@ void DRV_AppendInformationToHTTPIndexPage(http_request_t* request, int bPreState
 		}
 	}
 	DRV_Mutex_Free();
-
+	hprintf255(request, "<h5>boot value %i</h5>", GetRetramValue());
 	if (bPreState == false) {
 		hprintf255(request, "<h5>%i drivers active", c_active);
 		if (c_active > 0) {

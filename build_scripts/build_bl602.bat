@@ -133,7 +133,7 @@ set BUILD_RESULT=!errorlevel!
 if exist "%SDK_DIR%\customer_app\bl602_sharedApp\build_out\bl602_sharedApp.bin" (
     echo [INFO] Firmware compiled successfully. Running native Python OTA generation...
     pushd "%SDK_DIR%\image_conf"
-    python flash_build.py OpenBL602_App BL602
+    python flash_build.py bl602_sharedApp BL602
     popd
 
     echo [INFO] Copying output files...

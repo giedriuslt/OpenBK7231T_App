@@ -114,6 +114,10 @@ int DRV_MDNS_Active = 0;
 
 void Main_ForceUnsafeInit();
 
+// retention RAM progress marker (defined below), used in functions that come before the definition
+void SetRetramValue(uint32_t v1);
+uint32_t GetRetramValue();
+
 #if PLATFORM_BL602 || PLATFORM_W600 || PLATFORM_W800
 #define DEF_USE_WFI 1
 #else
@@ -711,6 +715,7 @@ void Main_ConnectToWiFiNow() {
 	HAL_WiFi_SetupStatusCallback(Main_OnWiFiStatusChange);
 	ADDLOGF_INFO("Registered for wifi changes");
 	ADDLOGF_INFO("Connecting to SSID [%s]", wifi_ssid);
+	SetRetramValue(401);
 	if(CFG_HasFlag(OBK_FLAG_WIFI_ENHANCED_FAST_CONNECT))
 	{
 		HAL_FastConnectToWiFi(wifi_ssid, wifi_pass, &g_cfg.staticIP);
@@ -755,8 +760,56 @@ static portTickType startTickbefore;
 static portTickType ticksElapsed;
 static portTickType ticksbetween;
 
+
+#define RETRAM_BASE_ADDR   0x40010200  /* BL602 Retention RAM base address */
+
+typedef struct {
+    uint32_t magic;
+    uint32_t value; /* Program Counter (mepc CSR) at hang */
+
+} crash_log_t;
+
+static volatile crash_log_t * const g_crash_log = (volatile crash_log_t *)RETRAM_BASE_ADDR;
+
+static uint32_t boot = 0;
+static uint32_t valueOnboot = 0;
+
+// Captures the value left behind by the previous run exactly once, before anything
+// overwrites it. Called from both Get and Set, so progress markers placed in the early
+// init code (before the first Main_OnEverySecond) are stored too.
+static void RetramCaptureOnce()
+{
+	if (boot == 0)
+	{
+		valueOnboot = g_crash_log->value;
+		boot = 1;
+	}
+}
+
+uint32_t GetRetramValue()
+{
+	RetramCaptureOnce();
+	return valueOnboot;
+}
+
+void SetRetramValue(uint32_t v1)
+{
+	RetramCaptureOnce();
+	g_crash_log->value = v1;
+}
+
+/*
+ Marker map (value left in retention RAM = last place that was reached):
+   1xx  Main_OnEverySecond
+   3xx  startup / init sequence
+   4xx  WiFi connect
+*/
+
 void Main_OnEverySecond()
 {
+	// first call also captures the value left by the previous run (see RetramCaptureOnce)
+	SetRetramValue(101);
+	
 	startTick = xTaskGetTickCount();
 	ticksbetween = startTick - startTickbefore;
 	startTickbefore = startTick;
@@ -776,6 +829,7 @@ void Main_OnEverySecond()
 
 	// display temperature - thanks to giedriuslt
 // only in Normal mode, and if boot is not failing
+	SetRetramValue(102);
 	if (!bSafeMode && g_bootFailures <= 1)
 	{
 #if PLATFORM_BEKEN
@@ -807,9 +861,11 @@ void Main_OnEverySecond()
 
 #if ENABLE_MQTT
 	// run_adc_test();
+	SetRetramValue(103);
 	newMQTTState = MQTT_RunEverySecondUpdate();
 	if (newMQTTState != bMQTTconnected) {
 		bMQTTconnected = newMQTTState;
+		SetRetramValue(137);
 		if (newMQTTState) {
 			EventHandlers_FireEvent(CMD_EVENT_MQTT_STATE, 1);
 		}
@@ -820,6 +876,7 @@ void Main_OnEverySecond()
 #endif
 	if (g_newWiFiStatus != g_prevWiFiStatus) {
 		g_prevWiFiStatus = g_newWiFiStatus;
+		SetRetramValue(136);
 		// Argument type here is HALWifiStatus_t enumeration
 		EventHandlers_FireEvent(CMD_EVENT_WIFI_STATE, g_newWiFiStatus);
 	}
@@ -830,30 +887,37 @@ void Main_OnEverySecond()
 		i = g_noMQTTTime + 1;
 	}
 	// 'i' is a new value
+	SetRetramValue(138);
 	EventHandlers_ProcessVariableChange_Integer(CMD_EVENT_CHANGE_NOMQTTTIME, g_noMQTTTime, i);
 	// save new value
 	g_noMQTTTime = i;
 
 
 #if ENABLE_MQTT
+	SetRetramValue(140);
 	MQTT_Dedup_Tick();
 #endif
 #if ENABLE_LED_BASIC
+	SetRetramValue(104);
 	LED_RunOnEverySecond();
 #endif
 #if ENABLE_BL602_TXSTATS
+	SetRetramValue(141);
 	BL602TX_OnEverySecond();
 #endif
 #ifndef OBK_DISABLE_ALL_DRIVERS
+	SetRetramValue(105);
 	DRV_OnEverySecond();
 #if defined(PLATFORM_BEKEN) || defined(WINDOWS) || defined(PLATFORM_BL602) || defined(PLATFORM_ESPIDF) \
  || defined (PLATFORM_RTL87X0C) || PLATFORM_ESP8266 && !PLATFORM_BL_NEW
+	SetRetramValue(106);
 	UART_RunEverySecond();
 #endif
 #endif
 
 	if (OTA_GetProgress() == -1)
 	{
+		SetRetramValue(107);
 		CFG_Save_IfThereArePendingChanges();
 	}
 
@@ -863,6 +927,7 @@ void Main_OnEverySecond()
 		g_secondsSpentInLowMemoryWarning++;
 		ADDLOGF_ERROR("Low heap warning!");
 		if (g_secondsSpentInLowMemoryWarning > 5) {
+			SetRetramValue(135);
 			HAL_RebootModule();
 		}
 	}
@@ -876,9 +941,11 @@ void Main_OnEverySecond()
 		if (strcpy_safe_checkForChanges(g_currentIPString, ip, sizeof(g_currentIPString))) {
 #if ENABLE_MQTT
 			if (MQTT_IsReady()) {
+				SetRetramValue(109);
 				MQTT_DoItemPublish(PUBLISHITEM_SELF_IP);
 			}
 #endif
+			SetRetramValue(110);
 			EventHandlers_FireEvent(CMD_EVENT_IPCHANGE, 0);
 #if ENABLE_HA_DISCOVERY
 			//Invoke Hass discovery if ipaddr changed
@@ -897,6 +964,7 @@ void Main_OnEverySecond()
 		// cast event so users can script anything easily, run custom commands
 		// Usage: addChangeHandler noPingTime > 600 reboot
 		g_timeSinceLastPingReply++;
+		SetRetramValue(139);
 		EventHandlers_ProcessVariableChange_Integer(CMD_EVENT_CHANGE_NOPINGTIME, g_prevTimeSinceLastPingReply, g_timeSinceLastPingReply);
 		g_prevTimeSinceLastPingReply = g_timeSinceLastPingReply;
 		// this is an old mechanism that just tries to reconnect (but without reboot)
@@ -905,6 +973,7 @@ void Main_OnEverySecond()
 			if (g_bHasWiFiConnected != 0)
 			{
 				ADDLOGF_INFO("[Ping watchdog] No ping replies within %i seconds. Will try to reconnect.", g_timeSinceLastPingReply);
+				SetRetramValue(111);
 				HAL_DisconnectFromWifi();
 				g_bHasWiFiConnected = 0;
 				g_connectToWiFi = 10;
@@ -922,6 +991,7 @@ void Main_OnEverySecond()
 			{
 				int value;
 
+				SetRetramValue(112);
 				value = HAL_ADC_Read(i);
 
 				//	ADDLOGF_INFO("ADC %i=%i", i,value);
@@ -938,13 +1008,16 @@ void Main_OnEverySecond()
 			{
 				scheduledDelay[i] = -1;
 #ifndef OBK_DISABLE_ALL_DRIVERS
+				SetRetramValue(113);
 				DRV_StopDriver(scheduledDriverName[i]);
+				SetRetramValue(114);
 				DRV_StartDriver(scheduledDriverName[i]);
 #endif
 				scheduledDriverName[i][0] = 0;
 			}
 		}
 	}
+	SetRetramValue(115);
 #if (WINDOWS || PLATFORM_TXW81X || PLATFORM_RDA5981)
 	g_secondsElapsed++;
 #elif defined(PLATFORM_ESPIDF)
@@ -965,6 +1038,7 @@ void Main_OnEverySecond()
 		//int mqtt_max, mqtt_cur, mqtt_mem;
 		//MQTT_GetStats(&mqtt_cur, &mqtt_max, &mqtt_mem);
 		//ADDLOGF_INFO("mqtt req %i/%i, free mem %i", mqtt_cur,mqtt_max,mqtt_mem);
+		SetRetramValue(116);
 #if ENABLE_MQTT
 		ADDLOGF_INFO("%sTime %i, idle %i/s , took %lu, delay %lu, free %d, MQTT %i(%i), Wifi %i, cap %u, snp %i, socks %i/%i %s",
 			safe, g_secondsElapsed, idleCount, ticksElapsed, ticksbetween, xPortGetFreeHeapSize(), bMQTTconnected,
@@ -977,6 +1051,7 @@ void Main_OnEverySecond()
 #endif
 		if (idleCount<10)
 		{
+			SetRetramValue(117);
 			LogSystemThreadsDiagnostic();
 		}
 		
@@ -986,6 +1061,7 @@ void Main_OnEverySecond()
 
 #ifdef OBK_MCU_SLEEP_METRICS_ENABLE
 	if (g_powersave && CFG_HasLoggerFlag(LOGGER_FLAG_POWER_SAVE)) {
+		SetRetramValue(118);
 		Main_LogPowerSave();
 	}
 #endif
@@ -994,6 +1070,7 @@ void Main_OnEverySecond()
 	// print network info
 	if (!(g_secondsElapsed % 10))
 	{
+		SetRetramValue(119);
 		HAL_PrintNetworkInfo();
 
 	}
@@ -1009,6 +1086,7 @@ void Main_OnEverySecond()
 		if (g_secondsElapsed > bootCompleteSeconds)
 		{
 			ADDLOGF_INFO("Boot complete time reached (%i seconds)", bootCompleteSeconds);
+			SetRetramValue(120);
 			HAL_FlashVars_SaveBootComplete();
 			//g_bootFailures = HAL_FlashVars_GetBootFailures();
 			g_bBootMarkedOK = true;
@@ -1022,6 +1100,7 @@ void Main_OnEverySecond()
 			g_doHomeAssistantDiscoveryIn--;
 			if (g_doHomeAssistantDiscoveryIn == 0) {
 				ADDLOGF_INFO("Will do request HA discovery now.");
+				SetRetramValue(121);
 				doHomeAssistantDiscovery(0, 0);
 			}
 			else {
@@ -1037,12 +1116,14 @@ void Main_OnEverySecond()
 	{
 		if (g_bHasWiFiConnected)
 		{
+			SetRetramValue(122);
 			HAL_DisconnectFromWifi();
 			g_bHasWiFiConnected = 0;
 		}
 		g_openAP--;
 		if (0 == g_openAP)
 		{
+			SetRetramValue(123);
 			HAL_SetupWiFiOpenAccessPoint(CFG_GetDeviceName());
 			g_bOpenAccessPointMode = 1;
 		}
@@ -1066,6 +1147,7 @@ void Main_OnEverySecond()
 					// mark as enabled
 					g_timeSinceLastPingReply = 0;
 #if ENABLE_PING_WATCHDOG
+					SetRetramValue(124);
 					Main_SetupPingWatchDog(pingTargetServer);
 #endif
 				}
@@ -1082,6 +1164,7 @@ void Main_OnEverySecond()
 		g_connectToWiFi--;
 		if (0 == g_connectToWiFi && g_bHasWiFiConnected == 0)
 		{
+			// marker 401 is set inside Main_ConnectToWiFiNow
 			Main_ConnectToWiFiNow();
 		}
 	}
@@ -1090,6 +1173,7 @@ void Main_OnEverySecond()
 	if (g_saveCfgAfter) {
 		g_saveCfgAfter--;
 		if (!g_saveCfgAfter) {
+			SetRetramValue(126);
 			CFG_Save_IfThereArePendingChanges();
 		}
 	}
@@ -1097,6 +1181,7 @@ void Main_OnEverySecond()
 		g_doUnsafeInitIn--;
 		if (!g_doUnsafeInitIn) {
 			ADDLOGF_INFO("Going to call Main_ForceUnsafeInit");
+			// markers 3xx are set inside the init functions
 			Main_ForceUnsafeInit();
 		}
 	}
@@ -1104,17 +1189,22 @@ void Main_OnEverySecond()
 		g_reset--;
 		if (!g_reset) {
 			// ensure any config changes are saved before reboot.
+			SetRetramValue(128);
 			CFG_Save_IfThereArePendingChanges();
 #if ENABLE_BL_SHARED
 			if (DRV_IsMeasuringPower())
 			{
+				SetRetramValue(129);
 				BL09XX_SaveEmeteringStatistics();
 			}
 #endif       
+			SetRetramValue(130);
 			DRV_SavePowerMeterDriverStatistics();
 			ADDLOGF_INFO("Rebooting...");
 			// call disconnect so that fast connect wouldn't fail
+			SetRetramValue(131);
 			HAL_DisconnectFromWifi();
+			SetRetramValue(198);
 			HAL_RebootModule();
 		}
 		else {
@@ -1126,16 +1216,20 @@ void Main_OnEverySecond()
 #if ENABLE_DRIVER_DHT
 	if (g_dhtsCount > 0) {
 		if (bSafeMode == 0) {
+			SetRetramValue(132);
 			DHT_OnEverySecond();
 		}
 	}
 #endif
+	SetRetramValue(133);
 	HAL_Run_WDT();
 	
 	ticksElapsed = (xTaskGetTickCount() - startTick);
 	// force it to sleep...  we MUST have some idle task processing
 	// else task memory doesn't get freed
+	SetRetramValue(134);
 	rtos_delay_milliseconds(1);
+	SetRetramValue(199);
 
 }
 
@@ -1327,9 +1421,11 @@ void Main_Init_AfterDelay_Unsafe(bool bStartAutoRunScripts) {
 	// initialise MQTT - just sets up variables.
 	// all MQTT happens in timer thread?
 #if ENABLE_MQTT
+	SetRetramValue(317);
 	MQTT_init();
 #endif
 
+	SetRetramValue(318);
 	CMD_Init_Delayed();
 
 	if (bStartAutoRunScripts) {
@@ -1338,6 +1434,7 @@ void Main_Init_AfterDelay_Unsafe(bool bStartAutoRunScripts) {
 			// start IR driver 5 seconds after boot.  It may affect wifi connect?
 			// yet we also want it to start if no wifi for IR control...
 #ifndef OBK_DISABLE_ALL_DRIVERS
+			SetRetramValue(319);
 #if ENABLE_DRIVER_IR || ENABLE_DRIVER_IRREMOTEESP
 			DRV_StartDriver("IR");
 			//ScheduleDriverStart("IR",5);
@@ -1350,13 +1447,16 @@ void Main_Init_AfterDelay_Unsafe(bool bStartAutoRunScripts) {
 
 		// NOTE: this will try to read autoexec.bat,
 		// so ALL commands expected in autoexec.bat should have been registered by now...
+		SetRetramValue(320);
 #if ENABLE_OBK_SCRIPTING
 		SVM_RunStartupCommandAsScript();
 #else
 		CMD_ExecuteCommand(CFG_GetShortStartupCommand(), COMMAND_FLAG_SOURCE_SCRIPT);
 #endif
+		SetRetramValue(321);
 		CMD_ExecuteCommand("startScript autoexec.bat", COMMAND_FLAG_SOURCE_SCRIPT);
 #if ENABLE_OBK_BERRY
+		SetRetramValue(322);
 		CMD_ExecuteCommand("berry import autoexec", COMMAND_FLAG_SOURCE_SCRIPT);
 #endif
 	}
@@ -1364,6 +1464,7 @@ void Main_Init_AfterDelay_Unsafe(bool bStartAutoRunScripts) {
 void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 	g_unsafeInitDone = true;
 #ifndef OBK_DISABLE_ALL_DRIVERS
+	SetRetramValue(306);
 	DRV_Generic_Init();
 #endif
 #ifdef PLATFORM_BEKEN
@@ -1375,6 +1476,7 @@ void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 
 	// set initial values for channels.
 	// this is done early so lights come on at the flick of a switch.
+	SetRetramValue(307);
 	CFG_ApplyChannelStartValues();
 	PIN_AddCommands();
 	ADDLOGF_DEBUG("Initialised pins");
@@ -1384,6 +1486,7 @@ void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 	// don't create if it does not mount
 	// do this for ST mode only, as it may be something in FS which is killing us,
 	// and we may add a command to empty fs just be writing first sector?
+	SetRetramValue(308);
 	init_lfs(0);
 #endif
 
@@ -1391,6 +1494,7 @@ void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 	ADDLOGF_DEBUG("Initialised other callbacks");
 
 	// initialise rest interface
+	SetRetramValue(309);
 	init_rest();
 
 	// add some commands...
@@ -1410,10 +1514,12 @@ void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 	// CMD_Init() is now split into Early and Delayed
 	// so ALL commands expected in autoexec.bat should have been registered by now...
 	// but DON't run autoexec if we have had 2+ boot failures
+	SetRetramValue(310);
 	CMD_Init_Early();
 #if WINDOWS
 	CMD_InitSimulatorOnlyCommands();
 #else
+	SetRetramValue(311);
 	HAL_RegisterPlatformSpecificCommands();
 #if ENABLE_BT_PROXY
 	extern void HAL_BTProxy_RegisterCommands();
@@ -1427,8 +1533,10 @@ void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 	}
 
 	if (bAutoRunScripts) {
+		SetRetramValue(312);
 		CMD_ExecuteCommand("exec early.bat", COMMAND_FLAG_SOURCE_SCRIPT);
 #ifndef OBK_DISABLE_ALL_DRIVERS
+		SetRetramValue(313);
 		if (!CFG_HasFlag(OBK_FLAG_DRV_DISABLE_AUTOSTART)) {
 			// autostart drivers
 			if (PIN_FindPinIndexForRole(IOR_SM2135_CLK, -1) != -1 && PIN_FindPinIndexForRole(IOR_SM2135_DAT, -1) != -1)
@@ -1503,10 +1611,13 @@ void Main_Init_BeforeDelay_Unsafe(bool bAutoRunScripts) {
 
 	g_enable_pins = 1;
 	// this actually sets the pins, moved out so we could avoid if necessary
+	SetRetramValue(314);
 	PIN_SetupPins();
+	SetRetramValue(315);
 	QuickTick_StartThread();
 
 #if ENABLE_LED_BASIC
+	SetRetramValue(316);
 	NewLED_RestoreSavedStateIfNeeded();
 #endif
 }
@@ -1528,6 +1639,7 @@ void Main_Init_Before_Delay()
 	ADDLOGF_INFO("%s", __func__);
 	bk_printf("\r%s\r\n", __func__);
 	// read or initialise the boot count flash area
+	SetRetramValue(301);
 	HAL_FlashVars_IncreaseBootCount();
 
 #if defined(PLATFORM_BEKEN)
@@ -1539,21 +1651,25 @@ void Main_Init_Before_Delay()
 	system_register_idle_callback(isidle);
 #endif
 
+	SetRetramValue(302);
 	g_bootFailures = HAL_FlashVars_GetBootFailures();
 	if (g_bootFailures > RESTARTS_REQUIRED_FOR_SAFE_MODE)
 	{
 		bSafeMode = 1;
 		ADDLOGF_INFO("###### safe mode activated - boot failures %d", g_bootFailures);
 	}
+	SetRetramValue(303);
 	CFG_InitAndLoad();
 
 #if ENABLE_LITTLEFS
+	SetRetramValue(304);
 	LFSAddCmds();
 #endif
 
 	// only initialise certain things if we are not in AP mode
 	if (!bSafeMode)
 	{
+		SetRetramValue(305);
 		Main_Init_BeforeDelay_Unsafe(true);
 	}
 
@@ -1572,6 +1688,7 @@ void Main_Init_Delay()
 	ADDLOGF_INFO("%s", __func__);
 	bk_printf("\r%s\r\n", __func__);
 
+	SetRetramValue(323);
 	extended_app_waiting_for_launch2();
 
 	ADDLOGF_INFO("%s done", __func__);
@@ -1610,6 +1727,7 @@ void Main_Init_After_Delay()
 		bForceOpenAP = 1;
 #endif
 
+	SetRetramValue(324);
 	HAL_Configure_WDT();
 
 	if ((*wifi_ssid == 0))
@@ -1628,6 +1746,7 @@ void Main_Init_After_Delay()
 #if ENABLE_MQTT
 				mqtt_loopsWithDisconnected = 9999;
 #endif
+				// marker 401 is set inside Main_ConnectToWiFiNow
 				Main_ConnectToWiFiNow();
 			}
 			else {
@@ -1645,6 +1764,7 @@ void Main_Init_After_Delay()
 #if MQTT_USE_TLS
 	if (!CFG_GetDisableWebServer() || bSafeMode) {
 #endif		
+		SetRetramValue(326);
 		HTTPServer_Start();
 		ADDLOGF_DEBUG("Started http tcp server");
 #if MQTT_USE_TLS
@@ -1660,6 +1780,7 @@ void Main_Init_After_Delay()
 			Main_ScheduleHomeAssistantDiscovery(1);
 		}
 #endif
+		SetRetramValue(327);
 		Main_Init_AfterDelay_Unsafe(true);
 #if ENABLE_LITTLEFS && ENABLE_LOG2LFS
 	// we have to wait until berry was run - it will else somewhow reinit/remount lfs and
@@ -1680,7 +1801,11 @@ void Main_Init_After_Delay()
 		if (g_log2lfs == 0) g_log2lfs = 20;
 */
 #endif
-	if (g_log2lfs > 0) initLog2LFS();
+	if (g_log2lfs > 0)
+	{
+		SetRetramValue(328);
+		initLog2LFS();
+	}
 //	bk_printf("g_log2lfs=%i\r\n", g_log2lfs);
 #endif
 	}
