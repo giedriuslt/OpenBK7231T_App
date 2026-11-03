@@ -71,6 +71,25 @@ typedef struct
 #define NTP_OFFSET 2208988800L
 
 static int g_ntp_socket = 0;
+
+// retention RAM progress marker, defined in main file
+extern void SetRetramValue(uint32_t v1);
+/*
+ NTP marker map (value left in retention RAM = last place that was reached):
+   100xx  NTP_OnEverySecond
+   101xx  NTP_SendRequest
+   102xx  NTP_CheckForReceive
+   103xx  NTP_Shutdown
+   104xx  NTP_SendRequest_BlockingMode
+   105xx  NTP_Init / NTP_Stop
+ NTP_MARK(v) is used wherever the socket should already exist:
+   v        = g_ntp_socket is valid
+   v + 5000 = g_ntp_socket was 0 at that moment (race: another thread ran NTP_Shutdown)
+ So 102xx / 152xx are the same place, with a valid / zero socket.
+ Markers placed before the socket is created use plain SetRetramValue.
+*/
+#define NTP_MARK(v) SetRetramValue(g_ntp_socket == 0 ? ((v) + 5000) : (v))
+
 static struct sockaddr_in g_address;
 static int adrLen;
 // in seconds, before next retry
@@ -108,6 +127,7 @@ void NTP_SetTimesZoneOfsSeconds(int o) {
 }
 
 void NTP_Init() {
+	SetRetramValue(10500);
 
 	//cmddetail:{"name":"ntp_timeZoneOfs","args":"[Value]",
 	//cmddetail:"descr":"Sets the time zone offset in hours. Also supports HH:MM syntax if you want to specify value in minutes. For negative values, use -HH:MM syntax, for example -5:30 will shift time by 5 hours and 30 minutes negative.",
@@ -124,6 +144,7 @@ void NTP_Init() {
 
 // if driver is stopped, we need to make sure, we don't keep NTP in state "synched"
 void NTP_Stop() {
+    SetRetramValue(10501);
     addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "NTP driver stopped");
     g_synced = false;
     g_drift_initialized = false;
@@ -138,12 +159,19 @@ unsigned int NTP_GetCurrentTimeWithoutOffset() {
 }
 
 void NTP_Shutdown() {
+    SetRetramValue(10300);
     if(g_ntp_socket != 0) {
+        // closing a valid socket
+        SetRetramValue(10301);
 #if WINDOWS
         closesocket(g_ntp_socket);
 #else
         lwip_close(g_ntp_socket);
 #endif
+        SetRetramValue(10302);
+    } else {
+        // socket was already 0 - nothing to close
+        SetRetramValue(15300);
     }
     g_ntp_socket = 0;
     // can attempt in next 10 seconds
@@ -155,6 +183,7 @@ void NTP_SendRequest(bool bBlocking) {
 	const char *adrString;
     ntp_packet packet = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+    SetRetramValue(10100);
     adrLen = sizeof(g_address);
     memset( &packet, 0, sizeof( ntp_packet ) );
     ptr = (byte*)&packet;
@@ -167,28 +196,37 @@ void NTP_SendRequest(bool bBlocking) {
     ptr[14]  = 49;
     ptr[15]  = 52;
 
+    // socket does not exist yet, so plain markers here
+    SetRetramValue(10101);
     if ((g_ntp_socket=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP )) == -1)
     {
         g_ntp_socket = 0;
+        SetRetramValue(10102);
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: failed to create socket");
         return;
     }
+    NTP_MARK(10103);
 
     memset((char *) &g_address, 0, sizeof(g_address));
 
+	NTP_MARK(10104);
 	adrString = CFG_GetNTPServer();
 	if (adrString == 0 || adrString[0] == 0) {
+		NTP_MARK(10105);
 		addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "NTP_SendRequest: somehow ntp server in config was empty, setting non-empty");
 		CFG_SetNTPServer(DEFAULT_NTP_SERVER);
 		adrString = CFG_GetNTPServer();
 	}
 
+    NTP_MARK(10106);
     g_address.sin_family = AF_INET;
     g_address.sin_addr.s_addr = inet_addr(adrString);
     g_address.sin_port = htons(123);
 
+    NTP_MARK(10107);
     if(sendto(g_ntp_socket, &packet, sizeof(packet), 0,
          (struct sockaddr*)&g_address, adrLen) < 0) {
+        NTP_MARK(10108);
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: Unable to send message");
         NTP_Shutdown();
 		if (g_secondsElapsed < 60) {
@@ -197,15 +235,19 @@ void NTP_SendRequest(bool bBlocking) {
         return;
     }
 
+    NTP_MARK(10109);
     if(bBlocking == false) {
 #if WINDOWS
 #else
+        NTP_MARK(10110);
         if(fcntl(g_ntp_socket, F_SETFL, O_NONBLOCK)) {
+            NTP_MARK(10111);
             addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_SendRequest: failed to make socket non-blocking!");
         }
 #endif
     }
 
+    NTP_MARK(10112);
     g_ntp_delay = 10;
 }
 
@@ -218,24 +260,32 @@ void NTP_CheckForReceive() {
     ntp_packet packet = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     ptr = (byte*)&packet;
 
+    // 152xx = we got here with g_ntp_socket == 0 (race)
+    NTP_MARK(10200);
     i = sizeof(packet);
 #if 0
     recv_len = recvfrom(g_ntp_socket, ptr, i, 0,
          (struct sockaddr*)&g_address, &adrLen);
 #else
+    // with socket 0 this would call recv() on fd 0, which may be some other socket
+    NTP_MARK(10201);
     recv_len = recv(g_ntp_socket, ptr, i, 0);
 #endif
+    NTP_MARK(10202);
 
     if(recv_len < 0){
+        NTP_MARK(10203);
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: Error while receiving server's msg");
         return;
     }
     // Must be at least 48 bytes to contain both transmit seconds (40-43) and fraction (44-47)
     if(recv_len < 48){
+        NTP_MARK(10204);
         addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP_CheckForReceive: response too short for millisecond parsing (%d bytes)", recv_len);
         return;
     }
 
+    NTP_MARK(10205);
     // Extract seconds (Bytes 40-43)
     highWord = MAKE_WORD(ptr[40], ptr[41]);
     lowWord = MAKE_WORD(ptr[42], ptr[43]);
@@ -249,9 +299,12 @@ void NTP_CheckForReceive() {
     // Scale fraction to structural float percentage (0.0 to 1.0 seconds)
     float current_ntp_frac = (float)rawFraction / 4294967296.0f;
 
+    // float formatting in log
+    NTP_MARK(10206);
     addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"NTP Time: %u.%.3f", secsSince1900, current_ntp_frac);
 
     // ---- Enhanced Sub-Second Drift Calculation Engine ----
+    NTP_MARK(10207);
     {
         uint32_t current_ntp_secs = secsSince1900 - NTP_OFFSET;
         uint32_t current_ticks = GET_MCU_TICKS();
@@ -289,7 +342,8 @@ void NTP_CheckForReceive() {
                     g_drift_ppm = (g_accumulated_drift_seconds / total_ntp_elapsed) * 1000000.0f;
                 }
 
-                addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "Drift Update: Int=%.4fs, Cumul=%.4fs, Rate=%.2f PPM", 
+                NTP_MARK(10208);
+                addLogAdv(LOG_INFO, LOG_FEATURE_NTP, "Drift Update: Int=%.4fs, Cumul=%.4fs, Rate=%.2f PPM",
                           interval_drift, g_accumulated_drift_seconds, g_drift_ppm);
                 
                 g_last_ntp_secs = current_ntp_secs;
@@ -300,25 +354,37 @@ void NTP_CheckForReceive() {
     }
     // ------------------------------------------------------
 
+    NTP_MARK(10209);
     TIME_setDeviceTime((uint32_t) (secsSince1900 - NTP_OFFSET) );
+    NTP_MARK(10210);
     addLogAdv(LOG_INFO, LOG_FEATURE_NTP,"Unix time: %u - local Time %s",(uint32_t) (secsSince1900 - NTP_OFFSET),TS2STR(TIME_GetCurrentTime(),TIME_FORMAT_LONG));
 
 	if (g_synced == false) {
+		// runs user scripts (addEventHandler NTPState ...)
+		NTP_MARK(10211);
 		EventHandlers_FireEvent(CMD_EVENT_NTP_STATE, 1);
 	}
     g_synced = true;
 
+    NTP_MARK(10212);
     NTP_Shutdown();
+    SetRetramValue(10213);
 }
 
 void NTP_SendRequest_BlockingMode() {
+    SetRetramValue(10400);
     NTP_Shutdown();
+    SetRetramValue(10401);
     NTP_SendRequest(true);
+    // blocking recv() without timeout - can hang here if the server never answers
+    NTP_MARK(10402);
     NTP_CheckForReceive();
+    SetRetramValue(10403);
 }
 
 void NTP_OnEverySecond()
 {
+    SetRetramValue(10001);
     if(Main_IsConnectedToWiFi()==0)
     {
         return;
@@ -332,21 +398,32 @@ void NTP_OnEverySecond()
     {
         return;
     }
+    SetRetramValue(10002);
     if(g_ntp_socket == 0) {
+        // no socket: waiting for retry delay or about to send a request
         if(g_ntp_delay > 0) {
             g_ntp_delay--;
+            SetRetramValue(10003);
             return;
         }
+        SetRetramValue(10004);
         NTP_SendRequest(false);
+        SetRetramValue(10005);
     } else {
+        // socket exists: 150xx variants mean it became 0 after the check above (race)
+        NTP_MARK(10010);
         NTP_CheckForReceive();
+        NTP_MARK(10011);
         if(g_ntp_delay > 0) {
             g_ntp_delay--;
             if(g_ntp_delay<=0) {
+                NTP_MARK(10012);
                 NTP_Shutdown();
+                SetRetramValue(10013);
             }
         }
     }
+    SetRetramValue(10006);
 }
 
 void NTP_AppendInformationToHTTPIndexPage(http_request_t* request, int bPreState)
