@@ -17,6 +17,22 @@
 #include "drv_uart.h"
 #include "../cmnds/cmd_public.h" //for enum EventCode
 #include <math.h>
+
+// retention RAM progress marker, defined in main file
+extern void SetRetramValue(uint32_t v1);
+/*
+ BL shared marker map (value left in retention RAM = last place that was reached):
+   21001-21006  BL_ProcessUpdateEx: start, relays check, sensor math, energy calc, flash var save (21005 before / 21006 after)
+   21007-21009  day rollover handling (21008 before / 21009 after BL09XX_SaveEmeteringStatistics)
+   21010-21015  energy stats: 21011 JSON build, 21012 before / 21013 after MQTT publish of stats, 21014 samples array, 21015 samples shift
+   21016        before per-sensor loop
+   21100 + i    per-sensor loop, sensor index i: before change event handlers (user scripts)
+   21200 + i    per-sensor loop, sensor index i: before MQTT publish (i = OBK_CONSUMPTION_CLEAR_DATE publishes a string)
+   21300 + i    per-sensor loop, sensor index i: after MQTT publish
+   21030-21032  periodic consumption save (21031 before / 21032 after BL09XX_SaveEmeteringStatistics)
+   21040        BL_ProcessUpdateEx finished
+   21050-21052  BL09XX_SaveEmeteringStatistics (21051 before / 21052 after HAL_SetEnergyMeterStatus = flash write)
+*/
 //#include <time.h>
 #include "../libraries/obktime/obktime.h"	// for time functions
 
@@ -275,6 +291,7 @@ void BL09XX_SaveEmeteringStatistics()
 
   ENERGY_METERING_DATA data;
 
+    SetRetramValue(21050);
     memset(&data, 0, sizeof(ENERGY_METERING_DATA));
 
     data.TotalConsumption = (float)sensdataset->sensors[OBK_CONSUMPTION_TOTAL].lastReading;
@@ -292,7 +309,10 @@ void BL09XX_SaveEmeteringStatistics()
     ConsumptionSaveCounter++;
     data.save_counter = ConsumptionSaveCounter;
 
+    // flash write
+    SetRetramValue(21051);
     HAL_SetEnergyMeterStatus(&data);
+    SetRetramValue(21052);
 }
 
 commandResult_t BL09XX_ResetEnergyCounterEx(int asensdatasetix, float* pvalue)
@@ -641,6 +661,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 
   // I had reports that BL0942 sometimes gives 
   // a large, negative peak of current/power
+  SetRetramValue(21001);
   if (!CFG_HasFlag(OBK_FLAG_POWER_ALLOW_NEGATIVE))
   {
     if (power < 0.0f)
@@ -652,6 +673,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
   }
   if (CFG_HasFlag(OBK_FLAG_POWER_FORCE_ZERO_IF_RELAYS_OPEN))
   {
+    SetRetramValue(21002);
     if (Channel_AreAllRelaysOpen()) {
       power = 0;
       current = 0;
@@ -663,6 +685,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
   current = XJ_MovingAverage_float((float)sensdataset->sensors[OBK_CURRENT].lastReading, current);
 #endif
 
+  SetRetramValue(21003);
   sensdataset->sensors[OBK_VOLTAGE].lastReading = voltage;
   sensdataset->sensors[OBK_CURRENT].lastReading = current;
   sensdataset->sensors[OBK_POWER].lastReading = power;
@@ -676,6 +699,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
     (sensdataset->sensors[OBK_POWER_APPARENT].lastReading == 0 ? 1 : sensdataset->sensors[OBK_POWER].lastReading / sensdataset->sensors[OBK_POWER_APPARENT].lastReading);
 
 
+  SetRetramValue(21004);
   sensors_reciveddata[asensdatasetix] = 1;
   {
     float energy = 0;
@@ -693,6 +717,8 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 
     sensdataset->sensors[OBK_CONSUMPTION_TOTAL].lastReading += (double)energy;
     energyCounterStamp[asensdatasetix] = xTaskGetTickCount();
+    // saves total consumption into flash vars, runs on every update
+    SetRetramValue(21005);
     #if ENABLE_BL_TWIN
     if (asensdatasetix == BL_SENSORS_IX_0) {
       //update only IX0, IX1 will be saved later in BL09XX_SaveEmeteringStatistics()
@@ -701,9 +727,11 @@ void BL_ProcessUpdate(float voltage, float current, float power,
     #else
     HAL_FlashVars_SaveTotalConsumption((float)sensdataset->sensors[OBK_CONSUMPTION_TOTAL].lastReading);
     #endif
+    SetRetramValue(21006);
     sensdataset->sensors[OBK_CONSUMPTION_TODAY].lastReading += energy;
 
     if (TIME_IsTimeSynced()) {
+      SetRetramValue(21007);
       deviceTime = (time_t)TIME_GetCurrentTime();
 //      ltm = gmtime(&deviceTime);
       uint8_t mday=TIME_GetMDay();
@@ -730,13 +758,16 @@ void BL_ProcessUpdate(float voltage, float current, float power,
         //stat_updatesSent++;
         if (OTA_GetProgress()==-1)
         {
+          SetRetramValue(21008);
           BL09XX_SaveEmeteringStatistics();
+          SetRetramValue(21009);
           lastConsumptionSaveStamp = xTaskGetTickCount();
         }
 
       }
     }
 
+    SetRetramValue(21010);
     if ((energyCounterStatsEnable == true) && (asensdatasetix==BL_SENSORS_IX_0))
     {
       interval = energyCounterSampleInterval;
@@ -752,6 +783,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 #if ENABLE_MQTT
         if ((energyCounterStatsJSONEnable == true) && (MQTT_IsReady() == true))
         {
+          SetRetramValue(21011);
           root = cJSON_CreateObject();
           cJSON_AddNumberToObject(root, "uptime", g_secondsElapsed);
           cJSON_AddNumberToObject(root, "consumption_total", BL_ChangeEnergyUnitIfNeeded(DRV_GetReading(OBK_CONSUMPTION_TOTAL)));
@@ -798,6 +830,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 
           if (energyCounterMinutes != NULL)
           {
+            SetRetramValue(21014);
             stats = cJSON_CreateArray();
             // WARNING - it causes HA problems?
             // See: https://github.com/openshwprojects/OpenBK7231T_App/issues/870
@@ -825,7 +858,9 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 
           // addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER, "JSON Printed: %d bytes", strlen(msg));
 
+          SetRetramValue(21012);
           MQTT_PublishMain_StringString("consumption_stats", msg, 0);
+          SetRetramValue(21013);
           stat_updatesSent[asensdatasetix]++;
           os_free(msg);
         }
@@ -833,6 +868,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 
         if (energyCounterMinutes != NULL)
         {
+          SetRetramValue(21015);
           for (i=energyCounterSampleCount-1;i>0;i--)
           {
             if (energyCounterMinutes[i-1]>0.0)
@@ -853,6 +889,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
         energyCounterMinutes[0] += energy;
     }
   }
+  SetRetramValue(21016);
   for (i = OBK__FIRST; i <= OBK__LAST; i++)
   {
 #ifdef ENABLE_BL_TWIN
@@ -882,6 +919,8 @@ void BL_ProcessUpdate(float voltage, float current, float power,
       case OBK_CONSUMPTION_LAST_HOUR:	eventChangeCode = CMD_EVENT_CHANGE_CONSUMPTION_LAST_HOUR; break;
       default:						eventChangeCode = CMD_EVENT_NONE; break;
       }
+      // 21100 + sensor index: change event handlers (user scripts) run here
+      SetRetramValue(21100 + i);
       switch (eventChangeCode) {
       case CMD_EVENT_NONE:
         break;
@@ -906,6 +945,8 @@ void BL_ProcessUpdate(float voltage, float current, float power,
 #if ENABLE_MQTT
       if (MQTT_IsReady() == true)
       {
+        // 21200 + sensor index: MQTT publish
+        SetRetramValue(21200 + i);
         if (i == OBK_CONSUMPTION_CLEAR_DATE) {
           {
             sensdataset->sensors[i].lastReading = ConsumptionResetTime; //Only to make the 'nochangeframe' mechanism work here
@@ -948,6 +989,7 @@ void BL_ProcessUpdate(float voltage, float current, float power,
           if (sensdataset->sensors[i].names.units == UNIT_WH) val = BL_ChangeEnergyUnitIfNeeded(val);
           MQTT_PublishMain_StringFloat(sensdataset->sensors[i].names.name_mqtt, val, sensdataset->sensors[i].rounding_decimals, OBK_PUBLISH_FLAG_QOS_ZERO);
         }
+        SetRetramValue(21300 + i);
         stat_updatesSent[asensdatasetix]++;
       }
 #endif
@@ -959,17 +1001,21 @@ void BL_ProcessUpdate(float voltage, float current, float power,
   }
 
   {
+      SetRetramValue(21030);
       if (((sensdataset->sensors[OBK_CONSUMPTION_TOTAL].lastReading - lastSavedEnergyCounterValue[asensdatasetix]) >= changeSavedThresholdEnergy) ||
       ((xTaskGetTickCount() - lastConsumptionSaveStamp) >= (6 * 3600 * 1000 / portTICK_PERIOD_MS)))
     {
       if (OTA_GetProgress() == -1)
       {
         lastSavedEnergyCounterValue[asensdatasetix] = (float)sensdataset->sensors[OBK_CONSUMPTION_TOTAL].lastReading;
+        SetRetramValue(21031);
         BL09XX_SaveEmeteringStatistics();
+        SetRetramValue(21032);
         lastConsumptionSaveStamp = xTaskGetTickCount();
       }
     }
   }
+  SetRetramValue(21040);
 }
 
 #if ENABLE_BL_TWIN

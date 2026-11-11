@@ -9,6 +9,21 @@
 //dummy
 #include <math.h>
 
+// retention RAM progress marker, defined in main file
+extern void SetRetramValue(uint32_t v1);
+/*
+ BL0937 marker map (value left in retention RAM = last place that was reached):
+   20001  BL0937_RunEverySecond entry
+   20002  pin roles checked, about to test bNeedRestart
+   20003  pins changed: before BL0937_Shutdown_Pins
+   20004  pins changed: before BL0937_Init_Pins
+   20005  HAL_PIN_SetOutputValue(SEL) returned, pulse counters being read
+   20006  before PwrCal_Scale
+   20007  max power exceeded, before log
+   20008  before BL_ProcessUpdate  (21xxx markers are inside it, see drv_bl_shared.c)
+   20009  BL_ProcessUpdate returned
+*/
+
 #include "../cmnds/cmd_public.h"
 #include "../hal/hal_pins.h"
 #include "../logging/logging.h"
@@ -140,6 +155,7 @@ void BL0937_RunEverySecond(void)
 	portTickType ticksElapsed;
 	portTickType xPassedTicks;
 
+	SetRetramValue(20001);
 	bNeedRestart = false;
 	if(g_invertSEL)
 	{
@@ -173,11 +189,14 @@ void BL0937_RunEverySecond(void)
 #endif
 
 #if 1
+	SetRetramValue(20002);
 	if(bNeedRestart)
 	{
 		addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER, "BL0937 pins have changed, will reset the interrupts");
 
+		SetRetramValue(20003);
 		BL0937_Shutdown_Pins();
+		SetRetramValue(20004);
 		BL0937_Init_Pins();
 #if PLATFORM_BEKEN
 		GLOBAL_INT_RESTORE();
@@ -216,6 +235,7 @@ void BL0937_RunEverySecond(void)
 	HAL_PIN_SetOutputValue(GPIO_HLW_SEL, g_sel);
 	g_vc_pulses = 0;
 
+	SetRetramValue(20005);
 	res_p = g_p_pulses;
 	g_p_pulses = 0;
 #if PLATFORM_BEKEN
@@ -228,6 +248,7 @@ void BL0937_RunEverySecond(void)
 	pulseStamp = xPassedTicks;
 	//addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER,"Voltage pulses %i, current %i, power %i", res_v, res_c, res_p);
 
+	SetRetramValue(20006);
 	PwrCal_Scale(res_v, res_c, res_p, &final_v, &final_c, &final_p);
 
 	final_v *= (1000.0f / (float)portTICK_PERIOD_MS);
@@ -245,6 +266,7 @@ void BL0937_RunEverySecond(void)
 		/* MAX value breach, use last value */
 		{
 			char dbg[128];
+			SetRetramValue(20007);
 			snprintf(dbg, sizeof(dbg), "Power reading: %f exceeded MAX limit: %f, Last: %f\n", final_p, BL0937_PMAX, last_p);
 			addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER, dbg);
 		}
@@ -262,7 +284,9 @@ void BL0937_RunEverySecond(void)
 		addLogAdv(LOG_INFO, LOG_FEATURE_ENERGYMETER, dbg);
 	}
 #endif
+	SetRetramValue(20008);
 	BL_ProcessUpdate(final_v, final_c, final_p, NAN, NAN);
+	SetRetramValue(20009);
 }
 
 // close ENABLE_DRIVER_BL0937
